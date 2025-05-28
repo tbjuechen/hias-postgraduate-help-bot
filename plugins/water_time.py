@@ -1,5 +1,5 @@
 from nonebot import on_command, on_message, get_driver, logger
-from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, MessageSegment
 from nonebot.typing import T_State
 from datetime import datetime
 from collections import defaultdict
@@ -127,6 +127,7 @@ async def handle_water_time(event: GroupMessageEvent):
             user_stats["active_minutes"] += 1
             user_stats["total_active_minutes"] += 1
         else:
+            old_active_minutes = user_stats["active_minutes"]
             # 计算时间间隔
             try:
                 last_time = datetime.strptime(last_minute, "%Y-%m-%d %H:%M")
@@ -146,6 +147,15 @@ async def handle_water_time(event: GroupMessageEvent):
                 # 解析时间失败，只算当前分钟
                 user_stats["active_minutes"] += 1
                 user_stats["total_active_minutes"] += 1
+            finally:
+                try:
+                    # 如果活跃分钟数达到整数小时，提醒成员
+                    if old_active_minutes // 60 < user_stats["active_minutes"] // 60:
+                        message ='[🤖提醒] ' + MessageSegment.at(user_id) + f' ⚠今日水群时间已到达{str(user_stats["active_minutes"] // 60)}小时'
+                        await water_time.send(message)
+                        logger.info(f"用户 {user_id} 在群 {group_id} 达到 {str(user_stats["active_minutes"] // 60)} 小时")
+                except Exception as e:
+                    logger.error(f"提醒用户水群时间失败: {e}")
         # 更新最后发言时间
         user_stats["last_speak_minute"] = now_minute
 
@@ -200,7 +210,7 @@ async def handle_stats(bot: Bot, event: GroupMessageEvent, state: T_State):
 
             msg_lines.append(f"{rank_emoji} {name}")
             msg_lines.append(f"   📅 今日：⏰{data['active_minutes']}分钟 💬{data['msg_count']}条")
-            msg_lines.append(f"   📈 总计：⏰{data['total_active_minutes']}分钟 💬{data['total_msg_count']}条")
+            # msg_lines.append(f"   📈 总计：⏰{data['total_active_minutes']}分钟 💬{data['total_msg_count']}条")
             if i < len(ranking[:10]):
                 msg_lines.append("   ────────────────────")
 
