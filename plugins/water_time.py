@@ -153,7 +153,7 @@ async def handle_water_time(event: GroupMessageEvent):
                     if old_active_minutes // 60 < user_stats["active_minutes"] // 60:
                         message ='[🤖提醒] ' + MessageSegment.at(user_id) + f' ⚠今日水群时间已到达{str(user_stats["active_minutes"] // 60)}小时'
                         await water_time.send(message)
-                        logger.info(f"用户 {user_id} 在群 {group_id} 达到 {str(user_stats["active_minutes"] // 60)} 小时")
+                        logger.info(f"用户 {user_id} 在群 {group_id} 达到 {str(user_stats['active_minutes'] // 60)} 小时")
                 except Exception as e:
                     logger.error(f"提醒用户水群时间失败: {e}")
         # 更新最后发言时间
