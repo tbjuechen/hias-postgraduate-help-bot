@@ -1,4 +1,4 @@
-from nonebot import on_command, on_message, get_driver
+from nonebot import on_command, on_message, get_driver, logger
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent
 from nonebot.typing import T_State
 from datetime import datetime
@@ -48,9 +48,9 @@ def load_data():
                             "total_active_minutes": stats.get("total_active_minutes", 0),
                             "total_msg_count": stats.get("total_msg_count", 0)
                         })
-                print(f"已加载历史数据: {len(data)} 个群组")
+                logger.info(f"已加载历史数据: {len(data)} 个群组")
     except Exception as e:
-        print(f"加载数据失败: {e}")
+        logger.error(f"加载数据失败: {e}")
 
 def save_data():
     """保存历史总数据到文件"""
@@ -67,9 +67,9 @@ def save_data():
         
         with open(DATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        print(f"历史数据已保存到 {DATA_FILE}")
+        logger.info(f"历史数据已保存到 {DATA_FILE}")
     except Exception as e:
-        print(f"保存数据失败: {e}")
+        logger.error(f"保存数据失败: {e}")
 
 async def periodic_save():
     """定期保存历史数据并更新总计"""
