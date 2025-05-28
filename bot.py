@@ -11,6 +11,7 @@ driver = get_driver()
 driver.register_adapter(Adapter)
 nonebot.load_plugins("plugins")
 nonebot.load_plugin("nonebot_plugin_resolver2")
+nonebot.load_plugin("nonebot_plugin_status")
 
 if __name__ == "__main__":
     driver.run()
