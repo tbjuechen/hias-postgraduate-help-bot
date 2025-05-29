@@ -191,7 +191,7 @@ async def handle_stats(bot: Bot, event: GroupMessageEvent, state: T_State):
             await stats_cmd.finish(f"成员 {user_id} 无统计数据")
         name = await get_user_name(bot, group_id, user_id)
         msg = (f"📊 {name} 的群活跃统计\n"
-               f"━━━━━━━━━━━━━━━━━━━━━━\n"
+               f"━━━━━━━━━━━━━━━━━\n"
                f"📅 今日数据：\n"
                f"  ⏰ 活跃时长：{data['active_minutes']} 分钟\n"
                f"  💬 发言次数：{data['msg_count']} 条\n"
@@ -202,7 +202,7 @@ async def handle_stats(bot: Bot, event: GroupMessageEvent, state: T_State):
     else:
         # 没有at，则显示所有成员排名（最多10个）
         ranking = sorted(stats_data.items(), key=lambda x: x[1]["active_minutes"], reverse=True)
-        msg_lines = ["🏆 今日群聊活跃度排行榜", "━━━━━━━━━━━━━━━━━━━━━━"]
+        msg_lines = ["🏆 今日群聊活跃度排行榜", "━━━━━━━━━━━━━━━━━"]
         coros = [get_user_name(bot, group_id, uid) for uid, _ in ranking[:10]]
         names = await asyncio.gather(*coros)
         for i, ((uid, data), name) in enumerate(zip(ranking[:10], names), 1):
@@ -218,8 +218,8 @@ async def handle_stats(bot: Bot, event: GroupMessageEvent, state: T_State):
             msg_lines.append(f"{rank_emoji} {name}")
             msg_lines.append(f"   📅 今日：⏰{data['active_minutes']}分钟 💬{data['msg_count']}条")
             # msg_lines.append(f"   📈 总计：⏰{data['total_active_minutes']}分钟 💬{data['total_msg_count']}条")
-            if i < len(ranking[:10]):
-                msg_lines.append("   ────────────────────")
+            # if i < len(ranking[:10]):
+                # msg_lines.append("   ───────────────")
 
         await stats_cmd.finish("\n".join(msg_lines))
 
