@@ -1,6 +1,7 @@
 from nonebot import on_command, on_message, get_driver, logger
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, MessageSegment
 from nonebot.typing import T_State
+from nonebot.plugin import PluginMetadata
 from datetime import datetime
 from collections import defaultdict
 from utils.rules import allow_group_rule
@@ -8,6 +9,13 @@ from utils.rules import allow_group_rule
 import json
 import asyncio
 from pathlib import Path
+
+__plugin_meta__ = PluginMetadata(
+    name="水群统计",
+    description="统计群成员在水群中的活跃度 用法: /stats [@成员]",
+    usage="/stats",
+    supported_adapters={"~onebot.v11", "~onebot.v12"},
+)
 
 # 数据文件路径
 DATA_DIR = Path("data")

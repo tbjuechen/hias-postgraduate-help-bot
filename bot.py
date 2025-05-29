@@ -12,6 +12,7 @@ driver.register_adapter(Adapter)
 nonebot.load_plugins("plugins")
 nonebot.load_plugin("nonebot_plugin_resolver2")
 nonebot.load_plugin("nonebot_plugin_status")
+nonebot.load_plugin("nonebot_plugin_treehelp")
 
 if __name__ == "__main__":
     driver.run()
