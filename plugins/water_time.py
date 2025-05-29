@@ -103,6 +103,13 @@ async def handle_water_time(event: GroupMessageEvent):
     if message_time != state["current_date"]:
         # 如果消息时间不是今天，重置统计并更新历史总计
         save_data()
+        group_stats = defaultdict(lambda: defaultdict(lambda: {
+            "active_minutes": 0,
+            "msg_count": 0,
+            "last_speak_minute": None,
+            "total_msg_count": 0,
+            "total_active_minutes": 0,
+        }))
         load_data()
         # 重置当前日期
         state["current_date"] = message_time
