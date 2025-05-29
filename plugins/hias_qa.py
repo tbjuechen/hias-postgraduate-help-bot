@@ -11,7 +11,7 @@ import os
 __plugin_meta__ = PluginMetadata(
     name="杭高问答",
     description="智能学院学姐问答助手，解答报考、复试、导师等相关问题",
-    usage="/hias <问题>",
+    usage="/hias <问题>\n 等待学姐回答你的问题",
     supported_adapters={"~onebot.v11", "~onebot.v12"},
 )
 
@@ -115,6 +115,7 @@ AI vs. 体系？
 2. 如果没有确切信息，应说明信息缺失。
 3. 如果问题和文档内容不相关，应礼貌地告知学弟学妹。
 4. 如果问题涉及个人意见或猜测，应避免回答。
+5. 不要输出markdown格式的文本，因为聊天将用于QQ群内的消息回复，Markdown格式在QQ中无法正确显示。
 '''
 
 async def llm_response(question: str) -> str:
