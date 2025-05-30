@@ -145,3 +145,79 @@ async def record_message(bot: Bot, event: GroupMessageEvent, state: T_State):
             
     except Exception as e:
         logger.error(f"记录消息失败: {e}")
+
+# 记录机器人发言
+def record_bot_message(bot: Bot, group_id: int, message_content: str, message_id: str = None):
+    """记录机器人发言"""
+    try:
+        if SessionLocal is None:
+            return
+            
+        # 构造机器人消息记录
+        bot_msg_info = {
+            "message_id": message_id or f"bot_{int(datetime.now().timestamp() * 1000)}",
+            "bot_id": str(bot.self_id),
+            "platform": "onebot-v11",
+            "group_id": group_id,
+            "user_id": int(bot.self_id),  # 机器人的用户ID
+            "user_name": "BOT",
+            "user_card": "机器人",
+            "message_type": "text",
+            "raw_message": message_content,
+            "plain_text": message_content,
+            "message_chain": json.dumps([{"type": "text", "data": {"text": message_content}}]),
+            "created_at": datetime.now(),
+            "reply_to_message_id": None,
+        }
+        
+        message_queue.append(bot_msg_info)
+        
+        if len(message_queue) >= 100:
+            asyncio.create_task(process_message_queue())
+            
+    except Exception as e:
+        logger.error(f"记录机器人消息失败: {e}")
+
+# Hook 机器人 call_api 方法
+original_call_api = None
+
+async def hooked_call_api(self, api: str, **data):
+    """Hook call_api 方法"""
+    global original_call_api
+    
+    # 调用原始方法
+    result = await original_call_api(self, api, **data)
+    
+    try:
+        # 检查是否是发送群消息的API
+        if api == "send_msg":
+            group_id = data.get("group_id")
+            message = data.get("message", "")
+            message_id = result.get("message_id") if isinstance(result, dict) else None
+            
+            if group_id:
+                record_bot_message(self, group_id, str(message), str(message_id) if message_id else None)
+                
+    except Exception as e:
+        logger.error(f"Hook记录机器人消息失败: {e}")
+    
+    return result
+
+@driver.on_startup
+async def hook_bot_methods():
+    """在启动时Hook机器人方法"""
+    global original_call_api
+    
+    # 等待一下确保Bot实例存在
+    await asyncio.sleep(1)
+    
+    try:
+        # Hook Bot 的 call_api 方法
+        from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
+        
+        if original_call_api is None:
+            original_call_api = OneBotV11Bot.call_api
+            OneBotV11Bot.call_api = hooked_call_api
+            logger.info("已Hook机器人call_api方法")
+    except Exception as e:
+        logger.error(f"Hook机器人方法失败: {e}")
