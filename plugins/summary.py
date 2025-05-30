@@ -10,6 +10,7 @@ from openai import AsyncOpenAI
 from PIL import Image, ImageDraw, ImageFont
 import os
 import io
+import sys
 import textwrap
 import base64
 
@@ -148,56 +149,71 @@ def create_summary_image(summary_text: str, stats_text: str) -> bytes:
     stats_color = (149, 165, 166)  # 浅灰色统计
     border_color = (189, 195, 199)  # 边框颜色
     
-    # 字体路径列表，按优先级排序
-    font_paths = [
-        # Ubuntu/Debian 中文字体
-        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
-        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", 
-        "/usr/share/fonts/truetype/arphic/uming.ttc",
-        "/usr/share/fonts/truetype/arphic/ukai.ttc",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        
-        # CentOS/RHEL 中文字体
-        "/usr/share/fonts/chinese/TrueType/uming.ttf",
-        "/usr/share/fonts/chinese/TrueType/ukai.ttf",
-        "/usr/share/fonts/wqy-zenhei/wqy-zenhei.ttc",
-        "/usr/share/fonts/wqy-microhei/wqy-microhei.ttc",
-        
-        # Alpine Linux
-        "/usr/share/fonts/TTF/DejaVuSans.ttf",
-        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
-        
-        # Docker容器常见路径
-        "/app/fonts/NotoSansSC-Regular.otf",
-        "/fonts/simhei.ttf",
-        
-        # Windows（如果是WSL）
-        "/mnt/c/Windows/Fonts/msyh.ttc",
-        "/mnt/c/Windows/Fonts/simhei.ttf",
-        
-        # macOS
-        "/System/Library/Fonts/PingFang.ttc",
-        "/Library/Fonts/Arial Unicode MS.ttf"
-    ]
-    
     def load_font(size: int):
         """加载字体，按优先级尝试"""
-        for font_path in font_paths:
+        
+        # Windows 字体
+        if sys.platform == "win32":
+            windows_fonts = [
+                "C:/Windows/Fonts/msyh.ttc",
+                "C:/Windows/Fonts/simhei.ttf",
+                "C:/Windows/Fonts/simsun.ttc",
+                "C:/Windows/Fonts/arial.ttf"
+            ]
+            for font_path in windows_fonts:
+                try:
+                    if os.path.exists(font_path):
+                        return ImageFont.truetype(font_path, size)
+                except Exception:
+                    continue
+        
+        # Linux/Unix 字体路径
+        linux_fonts = [
+            # Ubuntu/Debian 中文字体
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", 
+            "/usr/share/fonts/truetype/arphic/uming.ttc",
+            "/usr/share/fonts/truetype/arphic/ukai.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            
+            # CentOS/RHEL 中文字体
+            "/usr/share/fonts/chinese/TrueType/uming.ttf",
+            "/usr/share/fonts/chinese/TrueType/ukai.ttf",
+            "/usr/share/fonts/wqy-zenhei/wqy-zenhei.ttc",
+            "/usr/share/fonts/wqy-microhei/wqy-microhei.ttc",
+            
+            # Alpine Linux
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+            
+            # Docker容器常见路径
+            "/app/fonts/NotoSansSC-Regular.otf",
+            "/fonts/simhei.ttf",
+            
+            # WSL Windows字体
+            "/mnt/c/Windows/Fonts/msyh.ttc",
+            "/mnt/c/Windows/Fonts/simhei.ttf",
+            
+            # macOS
+            "/System/Library/Fonts/PingFang.ttc",
+            "/Library/Fonts/Arial Unicode MS.ttf"
+        ]
+        
+        for font_path in linux_fonts:
             try:
                 if os.path.exists(font_path):
                     return ImageFont.truetype(font_path, size)
             except Exception:
                 continue
         
-        # 如果都失败，尝试系统默认字体
+        # 尝试系统默认字体
         try:
             return ImageFont.truetype("DejaVuSans.ttf", size)
         except:
             try:
                 return ImageFont.load_default()
             except:
-                # 最后的fallback
                 return None
     
     # 加载字体
