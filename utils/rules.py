@@ -1,4 +1,5 @@
-import yaml
+import json
+import os
 from pathlib import Path
 from nonebot.rule import Rule
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
@@ -7,9 +8,9 @@ CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 def load_allowed_groups():
     try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-            return set(config.get("allowed_groups", []))
+        env_val = os.getenv("ALLOWED_GROUPS", "[]")
+        group_list = json.loads(env_val)
+        return set(int(group_id) for group_id in group_list)
     except Exception as e:
         print(f"加载群聊白名单失败: {e}")
         return set()
