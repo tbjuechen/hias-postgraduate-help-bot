@@ -9,13 +9,13 @@ import ast
 CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 def load_allowed_groups():
+    value = os.getenv('allowed_groups', "")
+    if not value:
+        return []
     try:
-        allowed_groups_env = os.getenv("ALLOWED_GROUPS", "[]")
-        allowed_groups = set(ast.literal_eval(allowed_groups_env))
-        return allowed_groups
-    except Exception as e:
-        print(f"加载群聊白名单失败: {e}")
-        return set()
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return []
 
 allowed_groups = load_allowed_groups()
 
