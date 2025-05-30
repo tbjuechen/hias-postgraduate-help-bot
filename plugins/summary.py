@@ -2,19 +2,16 @@ from nonebot import on_command
 from nonebot.exception import FinishedException
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message, MessageSegment
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_chatrecorder import get_message_records
-from nonebot_plugin_chatrecorder.model import MessageRecord
 from utils.rules import allow_group_rule
-from datetime import datetime, timedelta, timezone
-from openai import AsyncOpenAI
+from datetime import datetime, timedelta
 from PIL import Image, ImageDraw, ImageFont
 import os
 import io
 import sys
-import textwrap
 import base64
 
 from utils.llm import llm_response
+from plugins.group_msg_collect import MessageRecorderAPI
 
 __plugin_meta__ = PluginMetadata(
     name="省流插件",
@@ -47,76 +44,91 @@ summary_cmd = on_command("省流", rule=allow_group_rule, aliases={"总结", "su
 
 async def get_recent_messages(group_id: int, limit_minutes: int = 10, target_count: int = 100):
     """获取近期消息记录，优先按时间，不足则补足100条有效消息"""
-    # 计算时间范围 (注意：需要使用UTC时间)
-    time_limit = datetime.now(timezone.utc) - timedelta(minutes=limit_minutes)
-    
     # 先获取10分钟内的消息
-    time_records = await get_message_records(
-        scene_ids=[str(group_id)],  # 使用id2s参数指定群组ID
-        time_start=time_limit
+    time_limit = datetime.now() - timedelta(minutes=limit_minutes)
+    
+    # 获取10分钟内的消息
+    recent_messages = MessageRecorderAPI.get_messages(
+        group_id=group_id,
+        start_time=time_limit,
+        limit=200,  # 多获取一些确保有足够的有效消息
+        order_by="asc"
     )
     
     # 过滤出有效的文本消息
-    valid_records = []
-    for record in time_records:
-        if record.plain_text and record.plain_text.strip():
-            valid_records.append(record)
+    valid_recent = []
+    for msg in recent_messages:
+        if msg.get('plain_text') and msg['plain_text'].strip():
+            valid_recent.append(msg)
     
     # 如果10分钟内的有效消息已经够100条，直接返回
-    if len(valid_records) >= target_count:
-        return valid_records[-target_count:]  # 返回最新的100条
+    if len(valid_recent) >= target_count:
+        return valid_recent[-target_count:]  # 返回最新的100条
     
     # 如果不够，则获取更多历史消息来补足100条
     # 获取更多消息（不限时间，从更早的时间开始）
-    earlier_time = datetime.now(timezone.utc) - timedelta(hours=24)  # 获取24小时内的消息
-    all_records = await get_message_records(
-        scene_ids=[str(group_id)],  # 使用id2s参数指定群组ID
-        time_start=earlier_time
+    earlier_time = datetime.now() - timedelta(hours=24)  # 获取24小时内的消息
+    all_messages = MessageRecorderAPI.get_messages(
+        group_id=group_id,
+        start_time=earlier_time,
+        limit=300,  # 获取更多消息确保能补足
+        order_by="desc"  # 从新到旧
     )
     
-    # 重新过滤有效消息，只取最近的消息
-    all_valid_records = []
-    # 按时间倒序排列，获取最新的有效消息
-    sorted_records = sorted(all_records, key=lambda x: x.time, reverse=True)
-    
-    for record in sorted_records:
-        if record.plain_text and record.plain_text.strip():
-            all_valid_records.append(record)
-        if len(all_valid_records) >= target_count:
+    # 过滤有效消息
+    all_valid = []
+    for msg in all_messages:
+        if msg.get('plain_text') and msg['plain_text'].strip():
+            all_valid.append(msg)
+        if len(all_valid) >= target_count:
             break
     
     # 恢复时间顺序并返回
-    all_valid_records.reverse()
-    return all_valid_records
+    all_valid.reverse()
+    return all_valid
 
-async def format_messages_for_llm(records: list[MessageRecord], bot: Bot, group_id: int):
+async def format_messages_for_llm(messages: list, bot: Bot, group_id: int):
     """格式化消息记录供LLM处理"""
-    if not records:
+    if not messages:
         return "无聊天记录"
     
     formatted_messages = []
     
-    # 由于已经过滤过，这里直接处理所有记录
-    for record in records:
+    for msg in messages:
         try:
             # 获取用户昵称
-            try:
-                member_info = await bot.get_group_member_info(
-                    group_id=group_id,
-                    user_id=record.user_id,
-                    no_cache=True
-                )
-                username = member_info.get("card") or member_info.get("nickname") or str(record.user_id)
-            except:
-                username = str(record.user_id)
+            user_id = msg.get('user_id')
+            username = msg.get('user_card') or msg.get('user_name') or str(user_id)
+            
+            # 如果没有昵称信息，尝试从API获取
+            if not username or username == str(user_id):
+                try:
+                    member_info = await bot.get_group_member_info(
+                        group_id=group_id,
+                        user_id=user_id,
+                        no_cache=True
+                    )
+                    username = member_info.get("card") or member_info.get("nickname") or str(user_id)
+                except:
+                    username = str(user_id)
             
             # 格式化时间
-            msg_time = record.time.strftime("%H:%M")
+            created_at = msg.get('created_at')
+            if isinstance(created_at, str):
+                # 如果是ISO格式字符串，解析它
+                try:
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    msg_time = dt.strftime("%H:%M")
+                except:
+                    msg_time = "00:00"
+            else:
+                msg_time = "00:00"
             
             # 使用已有的纯文本消息
-            plain_text = record.plain_text.strip()
+            plain_text = msg.get('plain_text', '').strip()
             
-            formatted_messages.append(f"[{msg_time}] {username}: {plain_text}")
+            if plain_text:  # 只添加有文本内容的消息
+                formatted_messages.append(f"[{msg_time}] {username}: {plain_text}")
                 
         except Exception as e:
             continue
@@ -294,35 +306,38 @@ async def handle_summary(bot: Bot, event: GroupMessageEvent):
         await summary_cmd.send("🔄 正在分析近期聊天记录，请稍候...")
         
         # 获取近期消息（已自动过滤图片等无效消息）
-        records = await get_recent_messages(group_id)
+        messages = await get_recent_messages(group_id)
         
-        if not records:
+        if not messages:
             await summary_cmd.finish("❌ 近期暂无有效聊天记录")
         
         # 格式化消息
-        formatted_messages = await format_messages_for_llm(records, bot, group_id)
+        formatted_messages = await format_messages_for_llm(messages, bot, group_id)
         
         # 生成总结
         summary = await get_llm_summary(formatted_messages)
         
         # 统计信息
-        valid_count = len(records)
+        valid_count = len(messages)
         
         # 判断数据来源（是否为10分钟内数据）
-        time_limit_local = datetime.now(timezone.utc) - timedelta(minutes=10)
+        time_limit = datetime.now() - timedelta(minutes=10)
         recent_count = 0
-        for record in records:
-            # 确保时间比较的时区一致性
-            record_time = record.time
-            if record_time.tzinfo is None:
-                # 如果记录时间没有时区信息，假设为UTC
-                record_time = record_time.replace(tzinfo=timezone.utc)
-            elif record_time.tzinfo != timezone.utc:
-                # 如果有时区但不是UTC，转换为UTC
-                record_time = record_time.astimezone(timezone.utc)
-            
-            if record_time >= time_limit_local:
-                recent_count += 1
+        for msg in messages:
+            # 解析消息时间
+            created_at = msg.get('created_at')
+            if isinstance(created_at, str):
+                try:
+                    # 处理ISO格式时间字符串
+                    msg_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    # 如果有时区信息，转换为本地时间
+                    if msg_time.tzinfo:
+                        msg_time = msg_time.replace(tzinfo=None)
+                    
+                    if msg_time >= time_limit:
+                        recent_count += 1
+                except:
+                    continue
         
         if recent_count == valid_count and valid_count < 100:
             # 全部都是10分钟内的消息

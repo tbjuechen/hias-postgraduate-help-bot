@@ -28,9 +28,6 @@ driver = get_driver()
 @driver.on_startup
 async def startup():
     """启动时初始化"""
-    global engine, SessionLocal
-    engine = init_database()
-    SessionLocal = sessionmaker(bind=engine)
     
     # 启动批量插入任务
     asyncio.create_task(batch_insert_task())

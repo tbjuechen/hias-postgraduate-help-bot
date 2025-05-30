@@ -84,7 +84,6 @@ def init_database():
     Base.metadata.create_all(engine)
     return engine
 
-# 全局变量
-engine = None
-SessionLocal = None
+engine = init_database()
+SessionLocal = sessionmaker(bind=engine)
 message_queue = []
