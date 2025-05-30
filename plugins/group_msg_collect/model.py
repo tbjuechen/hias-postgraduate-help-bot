@@ -1,7 +1,7 @@
 import os
 import json
 
-from sqlalchemy import create_engine, Column, BigInteger, String, Text, DateTime, Boolean, Index, desc, and_, or_
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Boolean, Index, desc, and_, or_, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
@@ -16,7 +16,7 @@ class MessageRecord(Base):
     """消息记录表"""
     __tablename__ = "message_records"
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     
     # 基本信息
     message_id = Column(String(64), nullable=False, unique=True, index=True)
