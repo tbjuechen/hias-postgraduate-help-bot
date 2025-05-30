@@ -148,23 +148,62 @@ def create_summary_image(summary_text: str, stats_text: str) -> bytes:
     stats_color = (149, 165, 166)  # 浅灰色统计
     border_color = (189, 195, 199)  # 边框颜色
     
-    # 尝试加载字体
-    try:
-        # Windows
-        title_font = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 24)
-        text_font = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 18)
-        stats_font = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 14)
-    except:
+    # 字体路径列表，按优先级排序
+    font_paths = [
+        # Ubuntu/Debian 中文字体
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", 
+        "/usr/share/fonts/truetype/arphic/uming.ttc",
+        "/usr/share/fonts/truetype/arphic/ukai.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        
+        # CentOS/RHEL 中文字体
+        "/usr/share/fonts/chinese/TrueType/uming.ttf",
+        "/usr/share/fonts/chinese/TrueType/ukai.ttf",
+        "/usr/share/fonts/wqy-zenhei/wqy-zenhei.ttc",
+        "/usr/share/fonts/wqy-microhei/wqy-microhei.ttc",
+        
+        # Alpine Linux
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+        
+        # Docker容器常见路径
+        "/app/fonts/NotoSansSC-Regular.otf",
+        "/fonts/simhei.ttf",
+        
+        # Windows（如果是WSL）
+        "/mnt/c/Windows/Fonts/msyh.ttc",
+        "/mnt/c/Windows/Fonts/simhei.ttf",
+        
+        # macOS
+        "/System/Library/Fonts/PingFang.ttc",
+        "/Library/Fonts/Arial Unicode MS.ttf"
+    ]
+    
+    def load_font(size: int):
+        """加载字体，按优先级尝试"""
+        for font_path in font_paths:
+            try:
+                if os.path.exists(font_path):
+                    return ImageFont.truetype(font_path, size)
+            except Exception:
+                continue
+        
+        # 如果都失败，尝试系统默认字体
         try:
-            # Linux
-            title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
-            text_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
-            stats_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+            return ImageFont.truetype("DejaVuSans.ttf", size)
         except:
-            # 默认字体
-            title_font = ImageFont.load_default()
-            text_font = ImageFont.load_default()
-            stats_font = ImageFont.load_default()
+            try:
+                return ImageFont.load_default()
+            except:
+                # 最后的fallback
+                return None
+    
+    # 加载字体
+    title_font = load_font(24) or ImageFont.load_default()
+    text_font = load_font(18) or ImageFont.load_default()
+    stats_font = load_font(14) or ImageFont.load_default()
     
     # 文本换行处理
     max_width = width - 2 * padding
