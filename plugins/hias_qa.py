@@ -3,6 +3,7 @@ from nonebot.adapters.onebot.v11 import Bot, Event, Message, GroupMessageEvent
 from utils.rules import allow_group_rule
 from nonebot.plugin import PluginMetadata
 from nonebot.exception import FinishedException
+from nonebot.rule import to_me
 
 from openai import AsyncOpenAI
 
@@ -11,12 +12,16 @@ import os
 __plugin_meta__ = PluginMetadata(
     name="杭高问答",
     description="智能学院学姐问答助手，解答报考、复试、导师等相关问题",
-    usage="/hias <问题>\n 等待学姐回答你的问题",
+    usage="/hias <问题> 或 直接@机器人\n 等待学姐回答你的问题",
     supported_adapters={"~onebot.v11", "~onebot.v12"},
 )
 
 # 指令 /hias
-hias = on_command("hias", aliases={"杭高问答"}, priority=5)
+hias_cmd = on_command("hias", aliases={"杭高问答"}, priority=5)
+
+# @机器人
+hias_at = on_message(rule=to_me(), priority=10, block=False)
+
 
 # OpenAI API 初始化
 BASE_URL = os.getenv("OPENAI_API_BASE", "https://api.deepseek.com")
@@ -131,13 +136,13 @@ async def llm_response(question: str) -> str:
     )
     return response.choices[0].message.content.strip()
 
-@hias.handle()
+
 async def handle_hias(bot: Bot, event: GroupMessageEvent):
     try:
         # 获取用户提问
         question = event.get_plaintext().strip()
         if not question:
-            await hias.finish("请提供一个问题，我会尽力回答哦~ 😊")
+            return "请提供一个问题，我会尽力回答哦~ 😊"
 
         # 调用 LLM 获取回答
         answer = await llm_response(question)
@@ -145,9 +150,17 @@ async def handle_hias(bot: Bot, event: GroupMessageEvent):
         # 构造回复并@用户
         at_user = f"[CQ:at,qq={event.get_user_id()}]"
         reply = f"{at_user}\n{answer}"
-        await hias.finish(Message(reply))
+        return Message(reply)
     except FinishedException:
         raise  # 正常结束，不处理
 
     except Exception as e:
-        await hias.finish(f"抱歉，发生错误了：{str(e)} 😢 请稍后再试或联系管理员。")
+        return f"抱歉，发生错误了：{str(e)} 😢 请稍后再试或联系管理员。"
+    
+@hias_cmd.handle()
+async def handle_hias_command(bot: Bot, event: GroupMessageEvent):
+    await hias_cmd.finish(await handle_hias(bot, event))
+
+@hias_at.handle()
+async def handle_hias_at(bot: Bot, event: GroupMessageEvent):
+    await hias_at.finish(await handle_hias(bot, event))

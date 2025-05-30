@@ -11,7 +11,7 @@ async def handle_ping(bot: Bot, event: Event):
     await ping.finish("pong")
 
 # 监听群聊里@机器人并且消息是“ping”
-at_ping = on_message(rule=allow_group_rule,priority=10)
+at_ping = on_message(rule=allow_group_rule,priority=9, block=True)
 
 @at_ping.handle()
 async def handle_at_ping(bot: Bot, event: GroupMessageEvent):
