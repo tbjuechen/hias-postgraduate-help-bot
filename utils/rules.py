@@ -4,13 +4,15 @@ from pathlib import Path
 from nonebot.rule import Rule
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 
+import ast
+
 CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 def load_allowed_groups():
     try:
-        env_val = os.getenv("ALLOWED_GROUPS", "[]")
-        group_list = json.loads(env_val)
-        return set(int(group_id) for group_id in group_list)
+        allowed_groups_env = os.getenv("ALLOWED_GROUPS", "[]")
+        allowed_groups = set(ast.literal_eval(allowed_groups_env))
+        return allowed_groups
     except Exception as e:
         print(f"加载群聊白名单失败: {e}")
         return set()
