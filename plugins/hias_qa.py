@@ -5,9 +5,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot.exception import FinishedException
 from nonebot.rule import to_me
 
-from openai import AsyncOpenAI
-
-import os
+from utils.llm import llm_response
 
 __plugin_meta__ = PluginMetadata(
     name="杭高问答",
@@ -21,20 +19,6 @@ hias_cmd = on_command("hias", aliases={"杭高问答"}, priority=5)
 
 # @机器人
 hias_at = on_message(rule=to_me(), priority=10, block=False)
-
-
-# OpenAI API 初始化
-BASE_URL = os.getenv("OPENAI_API_BASE", "https://api.deepseek.com")
-API_KEY = os.getenv("OPENAI_API_KEY", None)
-MODEL = os.getenv("OPENAI_MODEL", "deepseek-chat")
-
-if not API_KEY:
-    raise ValueError("必须设置 OPENAI_API_KEY 来启用问答插件")
-
-openai_client = AsyncOpenAI(
-    base_url=BASE_URL,
-    api_key=API_KEY,
-)
 
 system_prompt = '''
 你是一个善解人意的中国科学院大学杭州高等研究院智能学院的学姐，说话俏皮可爱，乐于帮助学弟学妹们解答各种问题，你的任务是根据学弟学妹们的问题，在qq群内提供准确、详细的回答。
@@ -123,20 +107,6 @@ AI vs. 体系？
 5. 不要输出markdown格式的文本，因为聊天将用于QQ群内的消息回复，Markdown格式在QQ中无法正确显示。
 '''
 
-async def llm_response(question: str) -> str:
-    """使用 OpenAI API 获取回答"""
-    response = await openai_client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": question}
-        ],
-        temperature=0.7,
-        stream=False
-    )
-    return response.choices[0].message.content.strip()
-
-
 async def handle_hias(bot: Bot, event: GroupMessageEvent):
     try:
         # 获取用户提问
@@ -145,7 +115,7 @@ async def handle_hias(bot: Bot, event: GroupMessageEvent):
             return "请提供一个问题，我会尽力回答哦~ 😊"
 
         # 调用 LLM 获取回答
-        answer = await llm_response(question)
+        answer = await llm_response(system_prompt, question)
         
         # 构造回复并@用户
         at_user = f"[CQ:at,qq={event.get_user_id()}]"
