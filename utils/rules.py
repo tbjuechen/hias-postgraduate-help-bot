@@ -20,6 +20,6 @@ def load_allowed_groups():
 allowed_groups = load_allowed_groups()
 
 async def only_allowed_group(event: GroupMessageEvent) -> bool:
-    return event.group_id in allowed_groups
+    return str(event.group_id) in allowed_groups
 
 allow_group_rule = Rule(only_allowed_group)
