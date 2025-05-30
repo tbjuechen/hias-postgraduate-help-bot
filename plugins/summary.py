@@ -13,24 +13,13 @@ import io
 import textwrap
 import base64
 
+from utils.llm import llm_response
+
 __plugin_meta__ = PluginMetadata(
     name="省流插件",
     description="基于近期聊天记录生成总结",
     usage="/省流 - 总结近10分钟或近100条消息",
     supported_adapters={"~onebot.v11", "~onebot.v12"},
-)
-
-# OpenAI API 配置
-BASE_URL = os.getenv("OPENAI_API_BASE", "https://api.deepseek.com")
-API_KEY = os.getenv("OPENAI_API_KEY", None)
-MODEL = os.getenv("OPENAI_MODEL", "deepseek-chat")
-
-if not API_KEY:
-    raise ValueError("必须设置 OPENAI_API_KEY 来启用省流插件")
-
-openai_client = AsyncOpenAI(
-    base_url=BASE_URL,
-    api_key=API_KEY,
 )
 
 system_prompt = '''
@@ -139,16 +128,7 @@ async def get_llm_summary(messages: str) -> str:
         return "近期暂无聊天记录或有效消息"
     
     try:
-        response = await openai_client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"请总结以下QQ群聊天记录：\n\n{messages}"}
-            ],
-            temperature=0.3,
-            max_tokens=300
-        )
-        return response.choices[0].message.content.strip()
+        return await llm_response(system_prompt, messages)
     except Exception as e:
         return f"生成总结时出错：{str(e)}"
 
@@ -193,7 +173,7 @@ def create_summary_image(summary_text: str, stats_text: str) -> bytes:
     for line in summary_text.split('\n'):
         if line.strip():
             # 简单的文本换行（基于字符数估算）
-            chars_per_line = max_width // 12  # 估算每行字符数
+            chars_per_line = max_width // 20  # 估算每行字符数
             if len(line) <= chars_per_line:
                 wrapped_lines.append(line)
             else:
