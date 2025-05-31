@@ -1,5 +1,7 @@
 # 杭高院考研群BOT
 
+🔥报考杭高院=坐拥顶配人生！国科大杭高院携杭州C位buff强势招生——22408考试科目简单易学，零基础也能轻松拿捏！学术资源卷到天花板，杰青院士面对面带飞，计算机/软件所/网络中心三大王牌赛道任选，保科研冲大厂双开挂！AI方向25年招生简章仅27人，最终录取暴增至78人，扩招红利直接拉满！地铁12号线直达西子湖畔，课间就能打卡"西湖十景"，食堂更狂撒500万补贴，月花600-800吃遍杭帮菜+网红美食，这波"学术天堂+生活乐园"的王炸组合谁能拒绝？坐标全国互联网中心，大厂实习步行可达，中科院光环加持华5级就业，现在扫码进群817445354，解锁抄底上岸密码，26届本科er速冲这趟"学术暴富"专列！🚀
+
 ## 插件列表
 
 
@@ -9,15 +11,19 @@
 | [nonebot_plugin_status](https://github.com/nonebot/plugin-status)                | 查看服务器状态           |
 | [nonebot_plugin_treehelp](https://github.com/he0119/nonebot-plugin-treehelp)     | 查看bot功能              |
 | [nonebot-plugin-wordcloud](https://github.com/he0119/nonebot-plugin-wordcloud)   | 词云统计                 |
-| [ping-ping](#ping-pong)                                                          | 机器人在线查询           |
+| [ping-pong](#ping-pong)                                                          | 机器人在线查询           |
 | [water-time](#water-time)                                                        | 群成员水群时间提醒、统计 |
 | [hias-qa](#hias-qa)                                                              | 杭高问答                 |
+| [group_msg_collect](#group_msg_collect)                                          | 群聊消息收集             |
+| [summary](#summary)                                                              | 省流                     |
+
+注：第一方插件均受`allowed_group`环境变量控制。
 
 ### ping-pong
 
 使用方法：
 
-/ping 或者 @机器人 ping
+/ping 或者 ~~@机器人 ping~~
 
 机器人会回复pong
 
@@ -25,7 +31,7 @@
 
 使用方法：
 
-/stats  [@成员]
+/stats  [@成员] 或 /水群统计
 
 在没有@成员时返回水群日榜前十，当@成员时返回指定成员的水群统计
 
@@ -35,6 +41,40 @@
 
 使用方法：
 
-/hias <问题> 或 直接@机器人
+/hias <问题> 或 /杭高问答 或 直接@机器人
 
 ~~机器人~~学姐会根据[文档](./src/（QA）杭高智能报考指南v1.3.0（20250518）.pdf)内容回答成员关于杭高院的问题
+
+### group_msg_collect
+
+内置插件，用于收集群聊记录并提供api给下游插件，无需显式调用。
+
+### summary
+
+使用方法：
+
+/省流 或 /总结 或 /summary
+
+总结近群聊内近10分钟或近100条消息（取其一），并转化为图片输出到群聊。
+
+## 环境变量
+
+可能需要用到的环境变量，如需查看完整环境变量，请查看nonebot文档和第三方插件仓库。
+
+
+| 变量名              | 是否必须 | 备注                                                                                                |
+| ------------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| HOST                | 否       | ws服务地址                                                                                          |
+| PORT                | 否       | ws服务端口                                                                                          |
+| ONEBOT_ACCESS_TOKEN | 否       | ws服务token                                                                                         |
+| r_use_base64        | 否       | 默认为`false`，`nonebot_plugin_resolver2`是否使用`base64`输出，当适配器为`napcat`时建议设置为`true` |
+| SUPERUSERS          | 否       | 超级用户列表                                                                                        |
+| OPENAI_API_BASE     | 否       | 大模型api地址，默认为`deepseek`                                                                     |
+| OPENAI_API_KEY      | 是       | 大模型api密钥                                                                                       |
+| OPENAI_MODEL        | 否       | 选用的模型，默认为`deepseek-chat`                                                                   |
+| allowed_groups      | 是       | 第一方插件启用群聊列表                                                                              |
+
+## ~~未来规划~~ 画饼
+
+* [ ]  hias_qa插件知识库+文本嵌入实现
+* [ ]  闲聊插件（动态上下文实现）
