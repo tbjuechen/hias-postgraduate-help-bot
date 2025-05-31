@@ -74,7 +74,50 @@
 | OPENAI_MODEL        | 否       | 选用的模型，默认为`deepseek-chat`                                                                   |
 | allowed_groups      | 是       | 第一方插件启用群聊列表                                                                              |
 
+## 部署
+
+~~想必也没有人会想部署的~~
+
+以下提供一个在`Debian`系统上的基于`docker`的部署方式
+
+### 1. 安装驱动器（以[NapCat](https://github.com/NapNeko/NapCatQQ)为例）
+
+根据官方文档操作，运行NapCat容器并登陆账号：
+
+```bash
+docker run -d \
+-e NAPCAT_GID=$(id -g) \
+-e NAPCAT_UID=$(id -u) \
+-p 3000:3000 \
+-p 3001:3001 \
+-p 6099:6099 \
+--name napcat \
+--restart=always \
+mlikiowa/napcat-docker:latest
+```
+
+### 2. 安装依赖
+
+```bash
+git clone https://github.com/tbjuechen/qq-water-bot.git
+cd qq-water-bot
+pip install -r requirements.txt
+
+# ffmpeg安装（可选）
+sudo apt-get update
+sudo apt-get install ffmpeg
+```
+
+### 3. 运行bot
+
+```bash
+python3 bot.py
+```
+
+然后在`NapCat`中填写ws服务器地址与密钥连接bot。
+
 ## ~~未来规划~~ 画饼
 
 * [ ]  hias_qa插件知识库+文本嵌入实现
 * [ ]  闲聊插件（动态上下文实现）
+* [ ]  help插件（现在这个太丑）
