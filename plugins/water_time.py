@@ -220,7 +220,7 @@ async def shutdown():
     save_data()
 
 # 每条群消息触发，更新统计
-water_time = on_message(rule=allow_group_rule, priority=10)
+water_time = on_message(rule=allow_group_rule, priority=10, block=False)
 
 @water_time.handle()
 async def handle_water_time(event: GroupMessageEvent):
