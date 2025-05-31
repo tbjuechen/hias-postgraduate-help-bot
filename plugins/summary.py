@@ -16,7 +16,7 @@ from plugins.group_msg_collect import MessageRecorderAPI
 __plugin_meta__ = PluginMetadata(
     name="省流插件",
     description="基于近期聊天记录生成总结",
-    usage="/省流 - 总结近10分钟或近100条消息",
+    usage="/省流 或 /总结 或 /summary - 总结近10分钟或近100条消息",
     supported_adapters={"~onebot.v11", "~onebot.v12"},
 )
 

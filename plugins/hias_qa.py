@@ -10,7 +10,7 @@ from utils.llm import llm_response
 __plugin_meta__ = PluginMetadata(
     name="杭高问答",
     description="智能学院学姐问答助手，解答报考、复试、导师等相关问题",
-    usage="/hias <问题> 或 直接@机器人\n 等待学姐回答你的问题",
+    usage="/hias 或 /杭高问答 或 @机器人 <问题> - 等待学姐回答你的问题",
     supported_adapters={"~onebot.v11", "~onebot.v12"},
 )
 

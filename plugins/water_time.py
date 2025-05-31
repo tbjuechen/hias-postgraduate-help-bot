@@ -13,7 +13,7 @@ from pathlib import Path
 __plugin_meta__ = PluginMetadata(
     name="水群统计",
     description="统计群成员在水群中的活跃度",
-    usage="/stats [@成员] \n 查看当日水群统计，@成员可查看指定成员的统计数据",
+    usage="/stats 或 /水群统计 - 查看当日水群排行榜\n/stats @成员 - 查看指定成员的水群统计",
     supported_adapters={"~onebot.v11", "~onebot.v12"},
 )
 

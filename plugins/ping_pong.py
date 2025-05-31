@@ -21,6 +21,6 @@ async def handle_ping(bot: Bot, event: Event):
 __plugin_meta__ = PluginMetadata(
     name="ping",
     description="测试机器人是否在线",
-    usage="/ping \n机器人会回复pong",
+    usage="/ping - 机器人会回复pong",
     supported_adapters={"~onebot.v11", "~onebot.v12"},
 )
