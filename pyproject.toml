@@ -1,7 +1,12 @@
 [project]
-name = "qq-talktime-bot"
-version = "0.1.0"
-description = "qq-talktime-bot"
+name = "hias-postgraduate-help-bot"
+version = "1.0.0"
+description = """
+国科大杭高院智能学院考研群机器人
+提供AI问答、AI省流、水群统计、自动审批等功能
+
+项目地址：https://github.com/tbjuechen/hias-postgraduate-help-bot
+"""
 readme = "README.md"
 requires-python = ">=3.8, <4.0"
 
