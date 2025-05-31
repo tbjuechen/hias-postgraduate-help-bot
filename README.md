@@ -16,6 +16,7 @@
 | [hias-qa](#hias-qa)                                                              | 杭高问答                 |
 | [group_msg_collect](#group_msg_collect)                                          | 群聊消息收集             |
 | [summary](#summary)                                                              | 省流                     |
+| [new_member](#new_member)                                                        | 入群审批、欢迎           |
 
 注：第一方插件均受`allowed_group`环境变量控制。
 
@@ -56,6 +57,10 @@
 /省流 或 /总结 或 /summary
 
 总结近群聊内近10分钟或近100条消息（取其一），并转化为图片输出到群聊。
+
+### new_member
+
+新成员自动审批（关键字匹配）+欢迎
 
 ## 环境变量
 
