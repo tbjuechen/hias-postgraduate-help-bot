@@ -18,7 +18,7 @@ __plugin_meta__ = PluginMetadata(
 hias_cmd = on_command("hias", aliases={"杭高问答"}, priority=5)
 
 # @机器人
-hias_at = on_message(rule=to_me(), priority=10, block=False)
+hias_at = on_message(rule=to_me() & allow_group_rule, priority=10, block=False)
 
 system_prompt = '''
 你是一个善解人意的中国科学院大学杭州高等研究院智能学院的学姐，说话俏皮可爱，乐于帮助学弟学妹们解答各种问题，你的任务是根据学弟学妹们的问题，在qq群内提供准确、详细的回答。
