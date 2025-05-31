@@ -1,9 +1,12 @@
-from nonebot import on_request, on_notice, logger
+from nonebot import on_request, on_notice, logger, get_driver
 from nonebot.adapters.onebot.v11 import Bot, GroupRequestEvent, GroupIncreaseNoticeEvent, MessageSegment
 from nonebot.plugin import PluginMetadata
 from utils.rules import allow_group_rule
 import os
 import json
+import asyncio
+from collections import defaultdict
+from datetime import datetime
 
 __plugin_meta__ = PluginMetadata(
     name="加群申请处理",
@@ -11,7 +14,6 @@ __plugin_meta__ = PluginMetadata(
     usage="自动运行，无需手动操作",
     supported_adapters={"~onebot.v11"},
 )
-
 
 # 从环境变量读取欢迎消息
 WELCOME_MESSAGE = os.getenv('GROUP_WELCOME_MESSAGE', 
@@ -24,9 +26,90 @@ WELCOME_MESSAGE = os.getenv('GROUP_WELCOME_MESSAGE',
 
 快来介绍一下自己吧～""")
 
-keywords = ['b站', 'bilibili', 'B站', '小红书', 'xhs', '知乎', '同学', '学姐', '学长', '考研'\
-            , '引流', '铁柱', '群', '公众号', '微信', 'dy', '抖音', '经验贴', '宣讲']
+keywords = ['b站', 'bilibili', 'B站', '小红书', 'xhs', '知乎', '同学', '学姐', '学长', '考研',
+            '引流', '铁柱', '群', '公众号', '微信', 'dy', '抖音', '经验贴', '宣讲']
 logger.info(f"加群申请关键词: {keywords}")
+
+# 新成员暂存列表：群ID -> [(用户ID, 用户名, 加入时间)]
+pending_welcomes = defaultdict(list)
+
+# 获取驱动器用于定时任务
+driver = get_driver()
+
+async def send_batch_welcome():
+    """批量发送欢迎消息的定时任务"""
+    while True:
+        try:
+            await asyncio.sleep(60)  # 每60秒执行一次
+            
+            if not pending_welcomes:
+                continue
+            
+            # 获取当前所有Bot实例
+            from nonebot import get_bots
+            bots = get_bots()
+            
+            if not bots:
+                logger.warning("没有可用的Bot实例")
+                continue
+            
+            # 使用第一个可用的Bot
+            bot = list(bots.values())[0]
+            
+            # 处理每个群的新成员
+            groups_to_clear = []
+            for group_id, members in pending_welcomes.items():
+                if not members:
+                    continue
+                    
+                try:
+                    # 检查群组是否在允许列表中
+                    from utils.rules import allowed_groups
+                    if str(group_id) not in allowed_groups:
+                        groups_to_clear.append(group_id)
+                        continue
+                    
+                    # 构造批量欢迎消息
+                    if len(members) == 1:
+                        # 单个成员
+                        user_id, username, join_time = members[0]
+                        welcome_msg = MessageSegment.at(user_id) + f" {username}\n" + WELCOME_MESSAGE
+                    else:
+                        # 多个成员
+                        at_segments = []
+                        names = []
+                        for user_id, username, join_time in members:
+                            at_segments.append(MessageSegment.at(user_id))
+                            names.append(username)
+                        
+                        # 构造消息：多个@后面跟欢迎词
+                        welcome_msg = "".join([str(seg) + " " for seg in at_segments]) + f"\n🎉 欢迎 {', '.join(names)} 等 {len(members)} 位新同学加入杭高院考研群！\n\n" + WELCOME_MESSAGE
+                    
+                    # 发送欢迎消息
+                    await bot.send_group_msg(
+                        group_id=group_id,
+                        message=welcome_msg
+                    )
+                    
+                    logger.info(f"已向群 {group_id} 的 {len(members)} 位新成员发送批量欢迎消息")
+                    groups_to_clear.append(group_id)
+                    
+                except Exception as e:
+                    logger.error(f"发送群 {group_id} 批量欢迎消息失败: {e}")
+                    groups_to_clear.append(group_id)
+            
+            # 清空已处理的群组
+            for group_id in groups_to_clear:
+                pending_welcomes[group_id].clear()
+                
+        except Exception as e:
+            logger.error(f"批量欢迎任务执行失败: {e}")
+
+@driver.on_startup
+async def start_welcome_task():
+    """启动时创建批量欢迎任务"""
+    asyncio.create_task(send_batch_welcome())
+    logger.info("批量欢迎任务已启动")
 
 # 处理加群申请
 group_request_handler = on_request(priority=5)
@@ -106,7 +189,7 @@ group_increase_handler = on_notice(priority=5)
 
 @group_increase_handler.handle()
 async def handle_group_increase(bot: Bot, event: GroupIncreaseNoticeEvent):
-    """处理新成员入群事件"""
+    """处理新成员入群事件，将成员添加到待欢迎列表"""
     try:
         # 检查是否为成员增加事件
         if event.notice_type != "group_increase":
@@ -125,7 +208,7 @@ async def handle_group_increase(bot: Bot, event: GroupIncreaseNoticeEvent):
         user_id = event.user_id
         group_id = event.group_id
         
-        logger.info(f"新成员 {user_id} 加入群 {group_id}")
+        logger.info(f"新成员 {user_id} 加入群 {group_id}，已添加到待欢迎列表")
         
         # 获取用户信息
         try:
@@ -137,16 +220,11 @@ async def handle_group_increase(bot: Bot, event: GroupIncreaseNoticeEvent):
         except:
             username = str(user_id)
         
-        # 构造欢迎消息
-        welcome_msg = MessageSegment.at(user_id) + f" {username}\n" + WELCOME_MESSAGE
+        # 添加到待欢迎列表
+        join_time = datetime.now()
+        pending_welcomes[group_id].append((user_id, username, join_time))
         
-        # 发送欢迎消息
-        await bot.send_group_msg(
-            group_id=group_id,
-            message=welcome_msg
-        )
-        
-        logger.info(f"已向新成员 {username}({user_id}) 发送欢迎消息")
+        logger.info(f"新成员 {username}({user_id}) 已添加到群 {group_id} 的待欢迎列表，当前列表长度: {len(pending_welcomes[group_id])}")
         
     except Exception as e:
         logger.error(f"处理新成员入群时发生错误: {e}")
