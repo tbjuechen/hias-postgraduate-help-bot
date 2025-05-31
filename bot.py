@@ -11,7 +11,6 @@ driver = get_driver()
 driver.register_adapter(Adapter)
 nonebot.load_plugin("nonebot_plugin_resolver2")
 nonebot.load_plugin("nonebot_plugin_status")
-# nonebot.load_plugin("nonebot_plugin_treehelp")
 nonebot.load_plugin("nonebot_plugin_wordcloud")
 nonebot.load_plugins("plugins")
 

@@ -65,7 +65,6 @@ nonebot-plugin-orm==0.8.0
 nonebot-plugin-resolver2==1.9.1
 nonebot-plugin-send-anything-anywhere==0.7.1
 nonebot-plugin-status==0.9.0
-nonebot-plugin-treehelp==0.5.0
 nonebot-plugin-uninfo==0.8.0
 nonebot-plugin-waiter==0.8.1
 nonebot-plugin-wordcloud==0.9.0
