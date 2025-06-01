@@ -138,7 +138,7 @@ class MessageRecorderAPI:
         )
     
     @staticmethod
-    def get_reply_chain(message_id: str) -> List[Dict[str, Any]]:
+    def get_reply_chain(message_id: str) -> List[MessageRecord]:
         """获取回复链"""
         session = MessageRecorderAPI.get_session()
         try:
@@ -154,7 +154,7 @@ class MessageRecorderAPI:
                 if not message:
                     break
                     
-                chain.insert(0, message.to_dict())
+                chain.insert(0, message)
                 current_id = message.reply_to_message_id
             
             # 向下查找被回复的消息
@@ -163,7 +163,7 @@ class MessageRecorderAPI:
             ).order_by(MessageRecord.created_at.asc()).all()
             
             for reply in replies:
-                chain.append(reply.to_dict())
+                chain.append(reply)
             
             return chain
             

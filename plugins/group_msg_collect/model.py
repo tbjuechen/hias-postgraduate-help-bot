@@ -74,6 +74,10 @@ class MessageRecord(Base):
             'is_recalled': self.is_recalled,
         }
     
+    def __str__(self):
+        """字符串表示"""
+        return f"[{self.message_id}] [{self.created_at}] {self.user_name} ({self.user_id}): {self.raw_message}"
+    
 # 数据库初始化
 def init_database():
     """初始化数据库"""
