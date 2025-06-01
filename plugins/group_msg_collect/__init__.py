@@ -16,7 +16,7 @@ from nonebot import on_message, get_driver, logger
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent
 from nonebot.typing import T_State
 
-from .model import MessageRecord, init_database, engine, SessionLocal, sessionmaker, message_queue
+from .model import MessageRecord, init_database, engine, SessionLocal, sessionmaker
 
 import asyncio
 import json
@@ -28,16 +28,11 @@ driver = get_driver()
 @driver.on_startup
 async def startup():
     """启动时初始化"""
-    
-    # 启动批量插入任务
-    asyncio.create_task(batch_insert_task())
     logger.info("消息记录器已启动")
 
 @driver.on_shutdown
 async def shutdown():
     """关闭时清理"""
-    if message_queue:
-        await process_message_queue()
     logger.info("消息记录器已关闭")
 
 def extract_message_info(event: GroupMessageEvent, bot: Bot) -> dict:
@@ -59,10 +54,8 @@ def extract_message_info(event: GroupMessageEvent, bot: Bot) -> dict:
     
     # 提取回复信息
     reply_to = None
-    for segment in event.message:
-        if segment.type == "reply":
-            reply_to = segment.data.get("id")
-            break
+    if event.reply:
+        reply_to = str(event.reply.message_id) if event.reply.message_id else None
     
     # 获取纯文本
     plain_text = event.get_plaintext().strip()
@@ -91,40 +84,25 @@ def extract_message_info(event: GroupMessageEvent, bot: Bot) -> dict:
         "message_type": primary_type,
         "raw_message": str(event.raw_message),
         "plain_text": plain_text,
-        "message_chain": message_chain_json,  # 使用修复后的序列化
+        "message_chain": message_chain_json,
         "created_at": datetime.fromtimestamp(event.time),
         "reply_to_message_id": reply_to,
     }
 
-async def process_message_queue():
-    """批量处理消息队列"""
-    if not message_queue:
-        return
-    
+async def save_message_to_db(msg_info: dict):
+    """直接保存单条消息到数据库"""
     session = SessionLocal()
     try:
-        records_to_insert = []
-        for msg_info in message_queue:
-            record = MessageRecord(**msg_info)
-            records_to_insert.append(record)
-        
-        session.bulk_save_objects(records_to_insert)
+        record = MessageRecord(**msg_info)
+        session.add(record)
         session.commit()
-        logger.info(f"批量插入了 {len(message_queue)} 条消息")
+        logger.debug(f"消息已保存到数据库: {msg_info['message_id']}")
         
     except Exception as e:
         session.rollback()
-        logger.error(f"批量插入消息失败: {e}")
+        logger.error(f"保存消息失败: {e}")
     finally:
         session.close()
-        message_queue.clear()
-
-async def batch_insert_task():
-    """批量插入任务"""
-    while True:
-        await asyncio.sleep(30)
-        if message_queue:
-            await process_message_queue()
 
 # 消息记录器
 message_recorder = on_message(priority=1, block=False)
@@ -134,17 +112,13 @@ async def record_message(bot: Bot, event: GroupMessageEvent, state: T_State):
     """记录群消息"""
     try:
         msg_info = extract_message_info(event, bot)
-        message_queue.append(msg_info)
-        
-        # 队列满时立即处理
-        if len(message_queue) >= 100:
-            await process_message_queue()
+        await save_message_to_db(msg_info)
             
     except Exception as e:
         logger.error(f"记录消息失败: {e}")
 
 # 记录机器人发言
-def record_bot_message(bot: Bot, group_id: int, message_content: str, message_id: str = None):
+async def record_bot_message(bot: Bot, group_id: int, message_content: str, message_id: str = None, reply_to_message_id: str = None):
     """记录机器人发言"""
     try:
         if SessionLocal is None:
@@ -164,13 +138,10 @@ def record_bot_message(bot: Bot, group_id: int, message_content: str, message_id
             "plain_text": message_content,
             "message_chain": json.dumps([{"type": "text", "data": {"text": message_content}}]),
             "created_at": datetime.now(),
-            "reply_to_message_id": None,
+            "reply_to_message_id": reply_to_message_id ,
         }
         
-        message_queue.append(bot_msg_info)
-        
-        if len(message_queue) >= 100:
-            asyncio.create_task(process_message_queue())
+        await save_message_to_db(bot_msg_info)
             
     except Exception as e:
         logger.error(f"记录机器人消息失败: {e}")
@@ -191,9 +162,14 @@ async def hooked_call_api(self, api: str, **data):
             group_id = data.get("group_id")
             message = data.get("message", "")
             message_id = result.get("message_id") if isinstance(result, dict) else None
-            
+
+            for segment in message:
+                if segment.type == 'reply':
+                    # 如果是回复消息，获取回复的消息ID
+                    reply_to_message_id = segment.data.get('id')
+
             if group_id:
-                record_bot_message(self, group_id, str(message), str(message_id) if message_id else None)
+                await record_bot_message(self, group_id, str(message), str(message_id) if message_id else None, reply_to_message_id)
                 
     except Exception as e:
         logger.error(f"Hook记录机器人消息失败: {e}")

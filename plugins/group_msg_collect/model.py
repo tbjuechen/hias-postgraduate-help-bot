@@ -86,4 +86,3 @@ def init_database():
 
 engine = init_database()
 SessionLocal = sessionmaker(bind=engine)
-message_queue = []
