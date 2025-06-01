@@ -5,6 +5,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot.exception import FinishedException
 from nonebot.rule import to_me
 
+from plugins.group_msg_collect import MessageRecorderAPI
 from utils.llm import llm_response
 
 __plugin_meta__ = PluginMetadata(
@@ -108,26 +109,25 @@ AI vs. 体系？
 6. 不要输出markdown格式的文本，因为聊天将用于QQ群内的消息回复，Markdown格式在QQ中无法正确显示。
 '''
 
+from nonebot.adapters.onebot.v11 import MessageSegment
+
 async def handle_hias(bot: Bot, event: GroupMessageEvent):
     try:
-        # 获取用户提问
-        question = event.get_plaintext().strip()
-        if not question:
-            return "请提供一个问题，我会尽力回答哦~ 😊"
-
-        # 调用 LLM 获取回答
-        answer = await llm_response(system_prompt, question)
-        
-        # 构造回复并@用户
-        at_user = f"[CQ:at,qq={event.get_user_id()}]"
-        reply = f"{at_user}\n{answer}"
-        return Message(reply)
+        # 获取回复的消息链
+        reply_chain = MessageRecorderAPI.get_reply_chain(event.message_id)
+        # 获取回复的消息文本
+        context = '\n'.join([str(seg) for seg in reply_chain])
+       
+        answer = await llm_response(system_prompt, context)
+       
+        reply_msg = MessageSegment.reply(event.message_id) + answer
+        return reply_msg
+       
     except FinishedException:
-        raise  # 正常结束，不处理
-
+        raise
     except Exception as e:
         return f"抱歉，发生错误了：{str(e)} 😢 请稍后再试或联系管理员。"
-    
+
 @hias_cmd.handle()
 async def handle_hias_command(bot: Bot, event: GroupMessageEvent):
     await hias_cmd.finish(await handle_hias(bot, event))
