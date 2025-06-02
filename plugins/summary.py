@@ -58,7 +58,7 @@ async def get_recent_messages(group_id: int, limit_minutes: int = 10, target_cou
     # 过滤出有效的文本消息
     valid_recent = []
     for msg in recent_messages:
-        if msg.get('plain_text') and msg['plain_text'].strip():
+        if msg.message_type == "text" and msg.plain_text:
             valid_recent.append(msg)
     
     # 如果10分钟内的有效消息已经够100条，直接返回
@@ -78,7 +78,7 @@ async def get_recent_messages(group_id: int, limit_minutes: int = 10, target_cou
     # 过滤有效消息
     all_valid = []
     for msg in all_messages:
-        if msg.get('plain_text') and msg['plain_text'].strip():
+        if msg.message_type == "text" and msg.plain_text:
             all_valid.append(msg)
         if len(all_valid) >= target_count:
             break
@@ -92,46 +92,7 @@ async def format_messages_for_llm(messages: list, bot: Bot, group_id: int):
     if not messages:
         return "无聊天记录"
     
-    formatted_messages = []
-    
-    for msg in messages:
-        try:
-            # 获取用户昵称
-            user_id = msg.get('user_id')
-            username = msg.get('user_card') or msg.get('user_name') or str(user_id)
-            
-            # 如果没有昵称信息，尝试从API获取
-            if not username or username == str(user_id):
-                try:
-                    member_info = await bot.get_group_member_info(
-                        group_id=group_id,
-                        user_id=user_id,
-                        no_cache=True
-                    )
-                    username = member_info.get("card") or member_info.get("nickname") or str(user_id)
-                except:
-                    username = str(user_id)
-            
-            # 格式化时间
-            created_at = msg.get('created_at')
-            if isinstance(created_at, str):
-                # 如果是ISO格式字符串，解析它
-                try:
-                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                    msg_time = dt.strftime("%H:%M")
-                except:
-                    msg_time = "00:00"
-            else:
-                msg_time = "00:00"
-            
-            # 使用已有的纯文本消息
-            plain_text = msg.get('plain_text', '').strip()
-            
-            if plain_text:  # 只添加有文本内容的消息
-                formatted_messages.append(f"[{msg_time}] {username}: {plain_text}")
-                
-        except Exception as e:
-            continue
+    formatted_messages = [str(msg) for msg in messages]
     
     return "\n".join(formatted_messages)
 
@@ -271,7 +232,7 @@ def create_summary_image(summary_text: str, stats_text: str) -> bytes:
     draw.rectangle([5, 5, width-5, total_height-5], outline=border_color, width=2)
     
     # 绘制标题
-    title = "📝 聊天总结"
+    title = "聊天总结"
     title_bbox = draw.textbbox((0, 0), title, font=title_font)
     title_width = title_bbox[2] - title_bbox[0]
     title_x = (width - title_width) // 2
@@ -325,7 +286,7 @@ async def handle_summary(bot: Bot, event: GroupMessageEvent):
         recent_count = 0
         for msg in messages:
             # 解析消息时间
-            created_at = msg.get('created_at')
+            created_at = msg.created_at
             if isinstance(created_at, str):
                 try:
                     # 处理ISO格式时间字符串
@@ -341,13 +302,13 @@ async def handle_summary(bot: Bot, event: GroupMessageEvent):
         
         if recent_count == valid_count and valid_count < 100:
             # 全部都是10分钟内的消息
-            stats_text = f"📊 分析了近10分钟内的{valid_count}条有效消息"
+            stats_text = f"分析了近10分钟内的{valid_count}条有效消息"
         elif recent_count > 0:
             # 混合数据：10分钟内 + 历史补足
-            stats_text = f"📊 分析了近10分钟{recent_count}条+历史{valid_count-recent_count}条，共{valid_count}条有效消息"
+            stats_text = f"分析了近10分钟{recent_count}条+历史{valid_count-recent_count}条，共{valid_count}条有效消息"
         else:
             # 纯历史数据
-            stats_text = f"📊 近10分钟无消息，分析了最近{valid_count}条有效历史消息"
+            stats_text = f"近10分钟无消息，分析了最近{valid_count}条有效历史消息"
         
         # 生成图片
         img_bytes = create_summary_image(summary, stats_text)
