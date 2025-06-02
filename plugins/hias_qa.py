@@ -116,20 +116,20 @@ async def handle_hias(bot: Bot, event: GroupMessageEvent):
         # 获取回复的消息链
         reply_chain = MessageRecorderAPI.get_reply_chain(event.message_id)
         # 获取回复的消息文本
-        context = '\n'.join([str(seg) for seg in reply_chain if seg.message_type == 'text'])
+        context = '\n'.join([str(seg) for seg in reply_chain])
 
         content = [{'type': 'text', 'text': context}]
 
-        for seg in reply_chain:
-            if seg.message_type == 'image':
-                image = await bot.call_api('get_image', file=seg.get_image_id())
-                base64_url = await url_to_base64_cached(image.get('url'))
-                content.append({
-                    'type': 'image_url',
-                    'image_url': {
-                        'url': base64_url,
-                    }
-                })
+        # for seg in reply_chain:
+        #     if seg.message_type == 'image':
+        #         image = await bot.call_api('get_image', file=seg.get_image_id())
+        #         base64_url = await url_to_base64_cached(image.get('url'))
+        #         content.append({
+        #             'type': 'image_url',
+        #             'image_url': {
+        #                 'url': base64_url,
+        #             }
+        #         })
 
         answer = await llm_response(system_prompt, content)
        
