@@ -27,7 +27,7 @@ class MessageRecorderAPI:
         limit: int = 100,
         offset: int = 0,
         order_by: str = "desc"  # desc 或 asc
-    ) -> List[Dict[str, Any]]:
+    ) -> List[MessageRecord]:
         """
         查询消息记录
         
@@ -73,20 +73,21 @@ class MessageRecorderAPI:
             query = query.offset(offset).limit(limit)
             
             messages = query.all()
-            return [msg.to_dict() for msg in messages]
+            return messages
+            # return [msg.to_dict() for msg in messages]
             
         finally:
             session.close()
     
     @staticmethod
-    def get_message_by_id(message_id: str) -> Optional[Dict[str, Any]]:
+    def get_message_by_id(message_id: str) -> Optional[MessageRecord]:
         """根据消息ID获取消息"""
         session = MessageRecorderAPI.get_session()
         try:
             message = session.query(MessageRecord).filter(
                 MessageRecord.message_id == message_id
             ).first()
-            return message.to_dict() if message else None
+            return message if message else None
         finally:
             session.close()
     
@@ -95,7 +96,7 @@ class MessageRecorderAPI:
         group_id: int, 
         minutes: int = 10, 
         limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> List[MessageRecord]:
         """获取最近N分钟的消息"""
         start_time = datetime.now() - timedelta(minutes=minutes)
         return MessageRecorderAPI.get_messages(
@@ -111,7 +112,7 @@ class MessageRecorderAPI:
         group_id: Optional[int] = None,
         days: int = 30,
         limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    ) -> List[MessageRecord]:
         """搜索包含关键词的消息"""
         start_time = datetime.now() - timedelta(days=days)
         return MessageRecorderAPI.get_messages(
@@ -127,7 +128,7 @@ class MessageRecorderAPI:
         group_id: Optional[int] = None,
         days: int = 7,
         limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> List[MessageRecord]:
         """获取用户的消息记录"""
         start_time = datetime.now() - timedelta(days=days)
         return MessageRecorderAPI.get_messages(

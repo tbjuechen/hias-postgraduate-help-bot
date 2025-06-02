@@ -78,6 +78,19 @@ class MessageRecord(Base):
         """字符串表示"""
         return f"[{self.message_id}] [{self.created_at}] {self.user_name} ({self.user_id}): {self.raw_message}"
     
+    def get_image_id(self) -> Optional[str]:
+        """获取图片ID"""
+        if self.message_type == "image":
+            try:
+                message_chain = json.loads(self.message_chain)
+                for segment in message_chain:
+                    if segment['type'] == 'image':
+                        return segment['data'].get('file', None)
+            except json.JSONDecodeError:
+                return None
+        else:
+            raise ValueError("当前消息类型不是图片")
+    
 # 数据库初始化
 def init_database():
     """初始化数据库"""

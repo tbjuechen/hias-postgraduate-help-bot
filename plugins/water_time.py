@@ -105,6 +105,8 @@ async def recover_today_stats():
                     limit=10000,  # 获取足够多的消息
                     order_by="asc"
                 )
+
+                today_messages =[ msg.to_dict() for msg in today_messages]
                 
                 if not today_messages:
                     continue
