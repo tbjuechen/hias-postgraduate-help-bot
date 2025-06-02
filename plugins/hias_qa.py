@@ -32,7 +32,6 @@ system_prompt = '''
 - 你会使用一些网络流行语来增加趣味性，但要注意不要过度使用。
 - 你的初试成绩是 440 分，其中数学二 140 分、英语二 80 分、政治 80分、 专业课（408）  140 分，复试成绩是 90 分，最终录取为智能学院 AI 专业。
 - 群里的学姐除了你以外还有大喷菇学姐和阳光菇学姐
-
 下面是你需要遵循的知识内容：
 杭高智能报考指南 V1.3.0（2025/5/18）
 概述
@@ -110,15 +109,29 @@ AI vs. 体系？
 '''
 
 from nonebot.adapters.onebot.v11 import MessageSegment
+from nonebot import logger
 
 async def handle_hias(bot: Bot, event: GroupMessageEvent):
     try:
         # 获取回复的消息链
         reply_chain = MessageRecorderAPI.get_reply_chain(event.message_id)
         # 获取回复的消息文本
-        context = '\n'.join([str(seg) for seg in reply_chain])
-       
-        answer = await llm_response(system_prompt, context)
+        context = '\n'.join([str(seg) for seg in reply_chain if seg.message_type == 'text'])
+
+        content = [{'type': 'text', 'text': context}]
+
+        for seg in reply_chain:
+            if seg.message_type == 'image':
+                image = await bot.call_api('get_image', file=seg.get_image_id())
+                base64_url = await url_to_base64_cached(image.get('url'))
+                content.append({
+                    'type': 'image_url',
+                    'image_url': {
+                        'url': base64_url,
+                    }
+                })
+
+        answer = await llm_response(system_prompt, content)
        
         reply_msg = MessageSegment.reply(event.message_id) + answer
         return reply_msg
@@ -135,3 +148,42 @@ async def handle_hias_command(bot: Bot, event: GroupMessageEvent):
 @hias_at.handle()
 async def handle_hias_at(bot: Bot, event: GroupMessageEvent):
     await hias_at.finish(await handle_hias(bot, event))
+
+import httpx
+import base64
+import os
+from pathlib import Path
+from PIL import Image
+import io
+
+async def url_to_base64_cached(url, cache_dir="./data/cache"):
+   # 确保缓存目录存在
+   Path(cache_dir).mkdir(parents=True, exist_ok=True)
+   
+   # 生成缓存文件名
+   import hashlib
+   filename = hashlib.md5(url.encode()).hexdigest() + ".jpg"
+   cache_path = os.path.join(cache_dir, filename)
+   
+   # 如果缓存存在，直接读取
+   if os.path.exists(cache_path):
+       with open(cache_path, 'rb') as f:
+           base64_data = base64.b64encode(f.read()).decode('utf-8')
+           return f"data:image/jpeg;base64,{base64_data}"
+   
+   # 下载并转换为JPEG
+   async with httpx.AsyncClient() as client:
+       response = await client.get(url)
+       
+       # 使用PIL转换为JPEG格式
+       image = Image.open(io.BytesIO(response.content))
+       if image.mode in ('RGBA', 'LA', 'P'):
+           image = image.convert('RGB')
+       
+       # 保存为JPEG
+       image.save(cache_path, 'JPEG', quality=85)
+       
+       # 读取并编码为base64
+       with open(cache_path, 'rb') as f:
+           base64_data = base64.b64encode(f.read()).decode('utf-8')
+           return f"data:image/jpeg;base64,{base64_data}"
