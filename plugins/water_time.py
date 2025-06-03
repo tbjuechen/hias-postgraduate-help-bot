@@ -222,7 +222,7 @@ async def shutdown():
     save_data()
 
 # 每条群消息触发，更新统计
-water_time = on_message(rule=allow_group_rule, priority=10, block=False)
+water_time = on_message(rule=allow_group_rule, priority=2, block=False)
 
 @water_time.handle()
 async def handle_water_time(event: GroupMessageEvent):
@@ -298,7 +298,7 @@ async def handle_water_time(event: GroupMessageEvent):
             logger.error(f"提醒用户水群时间失败: {e}")
 
 # 添加一个查看当日水群统计的命令
-stats_cmd = on_command("stats", rule=allow_group_rule, aliases={"水群统计"}, priority=5)
+stats_cmd = on_command("stats", rule=allow_group_rule, aliases={"水群统计"}, priority=5, block=True)
 
 @stats_cmd.handle()
 async def handle_stats(bot: Bot, event: GroupMessageEvent, state: T_State):

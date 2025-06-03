@@ -56,7 +56,7 @@ async def load_info():
     """启动时加载项目信息"""
     load_project_info()
 
-info_cmd = on_command("info", rule=allow_group_rule, aliases={"版本", "信息"}, priority=5)
+info_cmd = on_command("info", rule=allow_group_rule, aliases={"版本", "信息"}, priority=5, block=True)
 
 @info_cmd.handle()
 async def handle_info(bot: Bot, event: MessageEvent):

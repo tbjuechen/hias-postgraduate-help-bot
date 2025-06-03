@@ -5,7 +5,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me, startswith
 
 # 指令 /ping
-ping = on_command("ping", aliases={"p"}, priority=5)
+ping = on_command("ping", aliases={"p"}, priority=5, block=True)
 
 @ping.handle()
 async def handle_ping(bot: Bot, event: Event):

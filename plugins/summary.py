@@ -40,7 +40,7 @@ system_prompt = '''
 '''
 
 # 省流命令
-summary_cmd = on_command("省流", rule=allow_group_rule, aliases={"总结", "summary"}, priority=5)
+summary_cmd = on_command("省流", rule=allow_group_rule, aliases={"总结", "summary"}, priority=5, block=True)
 
 async def get_recent_messages(group_id: int, limit_minutes: int = 10, target_count: int = 100):
     """获取近期消息记录，优先按时间，不足则补足100条有效消息"""

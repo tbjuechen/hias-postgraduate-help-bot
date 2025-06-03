@@ -19,7 +19,7 @@ FILTERED_PLUGINS = {
     "new_member",  # 新成员欢迎插件
 }
 
-help_cmd = on_command("help", rule=allow_group_rule, aliases={"帮助"}, priority=1)
+help_cmd = on_command("help", rule=allow_group_rule, aliases={"帮助"}, priority=1, block=True)
 
 @help_cmd.handle()
 async def handle_help(bot: Bot, event: MessageEvent):
