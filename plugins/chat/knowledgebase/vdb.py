@@ -31,7 +31,7 @@ class Item:
         }
     
 class BaseCollection(ABC):
-    def __init__(self, name:str, client:chromadb.PersistentClient):
+    def __init__(self, name:str, client:chromadb.PersistentClient=client):
         self.name = name
         self.client:chromadb.ClientAPI = client
         self.collection:chromadb.Collection = self.client.get_or_create_collection(name, metadata={
