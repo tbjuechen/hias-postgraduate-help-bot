@@ -113,3 +113,7 @@ class DocumentCollection(BaseCollection):
         """
         return super().query(doc_id, n_results=n_results)
     
+qa_base = QACollection()
+doc_base = DocumentCollection()
+
+__all__ = ['qa_base', 'doc_base']
