@@ -16,10 +16,18 @@ __plugin_meta__ = PluginMetadata(
 inactive_members = []  # 暗杀名单
 expired_time = 0
 
+def check_admin_or_owner(event: GroupMessageEvent) -> bool:
+    """
+    判断是否是群主或管理员
+    """
+    return event.sender.role in ("owner", "admin")
+
 clean_cmd = on_command("clean", aliases={"提纯"}, priority=5, rule=allow_group_rule, block=True)
 
 @clean_cmd.handle()
 async def handle_clean_command(bot: Bot, event: GroupMessageEvent):
+    if not check_admin_or_owner(event):
+        await clean_cmd.finish("只有群主或管理员可以使用此命令。")
     group_id = event.group_id
     global inactive_members
     global expired_time
@@ -57,6 +65,8 @@ async def handle_clean_command(bot: Bot, event: GroupMessageEvent):
 confirm_clean_cmd = on_command("confirm_clean", aliases={"确认提纯"}, priority=5, rule=allow_group_rule, block=True)
 @confirm_clean_cmd.handle()
 async def handle_confirm_clean_command(bot: Bot, event: GroupMessageEvent):
+    if not check_admin_or_owner(event):
+        await clean_cmd.finish("只有群主或管理员可以使用此命令。")
     global inactive_members
     global expired_time
     if not inactive_members:
