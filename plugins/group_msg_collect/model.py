@@ -76,7 +76,7 @@ class MessageRecord(Base):
     
     def __str__(self):
         """字符串表示"""
-        return f"[{self.message_id}] [{self.created_at}] {self.user_name} ({self.user_id}): {self.raw_message}"
+        return f"[{self.message_id}] [{self.created_at}] {self.user_card or self.user_name} ({self.user_id}): {self.raw_message}"
     
     def get_image_id(self) -> Optional[str]:
         """获取图片ID"""
