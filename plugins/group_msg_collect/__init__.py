@@ -90,6 +90,16 @@ def extract_message_info(event: GroupMessageEvent, bot: Bot) -> dict:
         "reply_to_message_id": reply_to,
     }
 
+_record_callbacks = []
+
+def on_message_save(callback: callable):
+    """注册消息保存回调"""
+    if not callable(callback):
+        raise ValueError("回调必须是一个可调用对象")
+    
+    _record_callbacks.append(callback)
+    return callback
+
 async def save_message_to_db(msg_info: dict):
     """直接保存单条消息到数据库"""
     session = SessionLocal()
@@ -98,12 +108,23 @@ async def save_message_to_db(msg_info: dict):
         session.add(record)
         session.commit()
         logger.debug(f"消息已保存到数据库: {msg_info['message_id']}")
-        
+    
     except Exception as e:
         session.rollback()
         logger.error(f"保存消息失败: {e}")
     finally:
         session.close()
+
+    for cb in _record_callbacks:
+        try:
+            if asyncio.iscoroutinefunction(cb):
+                await cb(str(record))
+            else:
+                cb(str(record))
+        except Exception as e:
+            logger.warning(f"Message callback failed: {e}")
+    
+    return record
 
 # 消息记录器
 message_recorder = on_message(priority=1, block=False)
