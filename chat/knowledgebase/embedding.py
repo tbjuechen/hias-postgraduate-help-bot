@@ -16,8 +16,8 @@ client = AsyncOpenAI(
     base_url=base_url,
 )
 
-def embedding(text: str):
-    response = client.embeddings.create(
+async def embedding(text: str):
+    response = await client.embeddings.create(
         model=model,
         input=[text],
     )

@@ -6,20 +6,20 @@ from pathlib import Path
 from typing import Callable
 from abc import ABC, abstractmethod
 
+import asyncio
 
 from .embedding import embedding
-
 
 DATA_DIR = Path("data")
 DB_FILE = DATA_DIR / "chromadb"
 
-client = chromadb.PersistentClient(path=DB_FILE, settings=chromadb.Settings(anonymized_telemetry=False))
+client = chromadb.PersistentClient(path=str(DB_FILE), settings=chromadb.Settings(anonymized_telemetry=False))
 
 class Item:
     def __init__(self,ids:str ,documents:str ,embedding:Callable=embedding, metadata:dict=None):
         self.ids = ids
         self.documents = documents
-        self.embedding = embedding(ids)
+        self.embedding = asyncio.create_task(embedding(ids))
         self.metadata = metadata if metadata else {}
 
     def to_dict(self):
@@ -53,8 +53,8 @@ class BaseCollection(ABC):
     def add(self, item:Item):
         self._add(item)
 
-    def query(self, query:str, n_results:int=1):
-        return self._query(embedding(query), n_results=n_results)
+    async def query(self, query:str, n_results:int=1):
+        return self._query(await embedding(query), n_results=n_results)
     
     def delete(self, ids:str):
         self._delete(ids)

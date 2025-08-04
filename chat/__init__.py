@@ -8,6 +8,9 @@ from nonebot.rule import to_me
 from plugins.group_msg_collect import MessageRecorderAPI
 from utils.llm import llm_response
 
+from .client import Client
+llm_client = Client()
+
 __plugin_meta__ = PluginMetadata(
     name="杭高问答",
     description="智能学院学姐问答助手，解答报考、复试、导师等相关问题",

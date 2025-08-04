@@ -1,7 +1,13 @@
+import os
+import shutil
+from datetime import datetime
+
+# 删除知识库目录 当前版本每次重新构建知识库
+if os.path.exists('data/chromadb'):
+    shutil.rmtree('data/chromadb')
+
 from .vdb import BaseCollection, Item
 from .text_splitter import RecursiveCharacterTextSplitter
-
-from datetime import datetime
 
 def text_split(content: str, chunk_size: int = 500, chunk_overlap: int = 50) -> list:
     """
@@ -82,7 +88,7 @@ class DocumentCollection(BaseCollection):
         """
         if not metadata:
             metadata = {}
-        
+
         metadata['created_at'] = datetime.now().isoformat()
         metadata['title'] = title
 
@@ -102,8 +108,9 @@ class DocumentCollection(BaseCollection):
                 chunk_metadata = metadata.copy()
                 chunk_metadata['index'] = i
                 item = Item(ids=f"{title}_{i}", documents=chunk, metadata=chunk_metadata)
+                self._add(item)
 
-    def query(self, doc_id: str, n_results: int = 1):
+    async def query(self, doc_id: str, n_results: int = 1):
         """
         查询文档
 
@@ -111,7 +118,13 @@ class DocumentCollection(BaseCollection):
         :param n_results: 返回的结果数量
         :return: 查询结果
         """
-        return super().query(doc_id, n_results=n_results)
+        return await super().query(doc_id, n_results=n_results)
+    
+    def show_docs(self):
+        """
+        显示所有文档的标题和创建时间
+        """
+        
     
 qa_base = QACollection()
 doc_base = DocumentCollection()
