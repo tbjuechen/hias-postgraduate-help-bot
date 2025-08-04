@@ -16,11 +16,16 @@ DB_FILE = DATA_DIR / "chromadb"
 client = chromadb.PersistentClient(path=str(DB_FILE), settings=chromadb.Settings(anonymized_telemetry=False))
 
 class Item:
-    def __init__(self,ids:str ,documents:str ,embedding:Callable=embedding, metadata:dict=None):
+    def __init__(self,ids:str ,documents:str , embedding_result, metadata:dict=None):
         self.ids = ids
         self.documents = documents
-        self.embedding = asyncio.create_task(embedding(ids))
+        self.embedding = embedding_result
         self.metadata = metadata if metadata else {}
+
+    @classmethod
+    async def create(cls, ids:str, documents:str, metadata:dict=None):
+        embedding_result = await embedding(ids)
+        return cls(ids, documents, embedding_result, metadata)
 
     def to_dict(self):
         return {
