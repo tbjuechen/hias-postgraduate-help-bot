@@ -2,7 +2,7 @@ from utils.llm import llm_response
 
 import asyncio
 
-from plugins.group_msg_collect import on_message_save
+# from plugins.group_msg_collect import on_message_save
 
 class MemoryList(list):
     def __init__(self, callback:callable, *args, **kwargs):
@@ -58,13 +58,13 @@ async def process_memery(message_cache: list):
     answer = await llm_response(prompt, question)
     update_short_term_memory(answer)
 
-@on_message_save
-def new_message(message: str):
-    """
-    处理新的消息
-    """
-    if not message:
-        return
+# @on_message_save
+# def new_message(message: str):
+#     """
+#     处理新的消息
+#     """
+#     if not message:
+#         return
     
-    recent_messages.append(message)
-    return message
+#     recent_messages.append(message)
+#     return message

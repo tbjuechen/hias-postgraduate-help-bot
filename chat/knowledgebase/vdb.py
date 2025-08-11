@@ -24,15 +24,15 @@ class Item:
 
     @classmethod
     async def create(cls, ids:str, documents:str, metadata:dict=None):
-        embedding_result = await embedding(ids)
+        embedding_result = await embedding(documents)
         return cls(ids, documents, embedding_result, metadata)
 
     def to_dict(self):
         return {
-            'ids': self.ids,
-            'documents': self.documents,
-            'embeddings': self.embedding,
-            'metadatas': self.metadata
+            'ids': [self.ids],
+            'documents': [self.documents],
+            'embeddings': [self.embedding],
+            'metadatas': [self.metadata]
         }
     
 class BaseCollection(ABC):

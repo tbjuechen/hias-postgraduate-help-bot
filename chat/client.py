@@ -8,14 +8,14 @@ import shutil
 class Client:
     def __init__(self, *args, **kwargs):
         # 初始化客户端
-        build_doc_base()
+        self.llm = kwargs.get('llm', None)
 
     async def _generate_prompt(self, question: str) -> str:
         '''构造提示词'''
 
         related_knowledge = await doc_base.query(question, n_results=3)
 
-        if not joined_recent_messages:
+        if not recent_messages:
             joined_recent_messages = '没有最近的对话内容'
         else:
             joined_recent_messages = '\n'.join(recent_messages)
@@ -23,7 +23,7 @@ class Client:
         if not related_knowledge:
             joined_related_knowledge = '没有相关的知识库内容'
         else:
-            joined_related_knowledge = [f"{item.documents}" for item in related_knowledge]
+            joined_related_knowledge = [f"{item}" for item in related_knowledge['documents']]
         
 
         return f"""你是一个善解人意的中国科学院大学杭州高等研究院智能学院的学姐，说话俏皮可爱，乐于帮助学弟学妹们解答各种问题
@@ -54,3 +54,16 @@ class Client:
 以下是与问题相关的知识库内容：
 {joined_related_knowledge}
 请根据以上信息回答学弟学妹们的问题。"""
+    
+    async def chat(self, question: str) -> str:
+        """
+        与学姐聊天，获取回答
+        :param question: 学弟学妹提出的问题
+        :return: 学姐的回答
+        """
+        prompt = await self._generate_prompt(question)
+        
+        # 模拟调用大模型API获取回答
+        answer = await self.llm(prompt, question)
+                
+        return answer

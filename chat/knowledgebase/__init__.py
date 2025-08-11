@@ -51,7 +51,7 @@ class QACollection(BaseCollection):
         
         metadata['created_at'] = datetime.now().isoformat()
 
-        item = Item(ids=question, documents=answer, metadata=metadata)
+        item = Item.create(ids=question, documents=answer, metadata=metadata)
         self._add(item)
 
     def query(self, question: str, n_results: int = 1):
@@ -78,7 +78,7 @@ class DocumentCollection(BaseCollection):
         super().__init__(name)
         self.name = name
 
-    def add(self, title: str, content: str, metadata:dict=None):
+    async def add(self, title: str, content: str, metadata:dict=None):
         """
         添加文档到数据库
 
@@ -99,7 +99,7 @@ class DocumentCollection(BaseCollection):
             # 无需分片，直接插入
             metadata['is_split'] = False
             metadata['index'] = 0
-            item = Item(ids=title, documents=content, metadata=metadata)
+            item = await Item.create(ids=title, documents=content, metadata=metadata)
             self._add(item)
         else:
             for i, chunk in enumerate(doc_chunks):
@@ -107,7 +107,7 @@ class DocumentCollection(BaseCollection):
                 metadata['is_split'] = True
                 chunk_metadata = metadata.copy()
                 chunk_metadata['index'] = i
-                item = Item(ids=f"{title}_{i}", documents=chunk, metadata=chunk_metadata)
+                item = await Item.create(ids=f"{title}_{i}", documents=chunk, metadata=chunk_metadata)
                 self._add(item)
 
     async def query(self, doc_id: str, n_results: int = 1):

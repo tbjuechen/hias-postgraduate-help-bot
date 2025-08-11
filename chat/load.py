@@ -5,7 +5,6 @@ from .knowledgebase import qa_base, doc_base
 
 from pathlib import Path
 
-from nonebot import logger
 
 SRC_DIR = Path('src') / 'json'
 QA_PATH = SRC_DIR / 'QA'
@@ -17,7 +16,7 @@ def build_qa_base():
     """
     pass
 
-def build_doc_base():
+async def build_doc_base():
     """
     根据当前目录下的doc文件夹中的json文件构建文档知识库
     """
@@ -37,10 +36,10 @@ def build_doc_base():
 
             metadata = {}
             # 添加到文档知识库
-            doc_base.add(title=doc_data['title'], content=doc_data['content'], metadata=metadata)
+            await doc_base.add(title=doc_data['title'], content=doc_data['content'], metadata=metadata)
 
-    logger.info(f"文档知识库已加载，包含 {len(doc_base.collection.get()['ids'])} 个文档。")
+    print(f"文档知识库已加载，包含 {len(doc_base.collection.get()['ids'])} 个文档。")
     # test 
-    result = asyncio.run(doc_base.query("测试文档", n_results=1))
-    logger.info(f"查询文档知识库结果：{result}")
+    result = await doc_base.query("测试文档", n_results=1)
+    print(f"查询文档知识库结果：{result}")
     
