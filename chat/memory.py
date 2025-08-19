@@ -58,13 +58,12 @@ async def process_memery(message_cache: list):
     answer = await llm_response(prompt, question)
     update_short_term_memory(answer)
 
-# @on_message_save
-# def new_message(message: str):
-#     """
-#     处理新的消息
-#     """
-#     if not message:
-#         return
+def new_message(message: str):
+    """
+    处理新的消息
+    """
+    if not message:
+        return
     
-#     recent_messages.append(message)
-#     return message
+    recent_messages.append(message)
+    return message
