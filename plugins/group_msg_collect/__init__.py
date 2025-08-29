@@ -113,16 +113,15 @@ async def save_message_to_db(msg_info: dict):
         session.rollback()
         logger.error(f"保存消息失败: {e}")
     finally:
+        for cb in _record_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(cb):
+                    await cb(record.to_dict(), str(record))
+                else:
+                    cb(record.to_dict(), str(record))
+            except Exception as e:
+                logger.warning(f"Message callback failed: {e}")
         session.close()
-
-    for cb in _record_callbacks:
-        try:
-            if asyncio.iscoroutinefunction(cb):
-                await cb(record)
-            else:
-                cb(record)
-        except Exception as e:
-            logger.warning(f"Message callback failed: {e}")
     
     return record
 

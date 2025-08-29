@@ -29,20 +29,19 @@ hias_at = on_message(rule=to_me() & allow_group_rule, priority=10, block=False)
 clients = defaultdict(lambda: Client(llm=llm_response))
 
 @on_message_save
-def handle_new_message(message):
+def handle_new_message(message, message_str):
     """处理新的消息，更新短期记忆"""
-    message_dict = message.to_dict()
-    group = message_dict.get("group_id")
-    clients[group].new_message(str(message))
+    group = message.get("group_id")
+    clients[group].new_message(message_str)
 
 driver = get_driver()   
 
-# @driver.on_startup
-# async def startup():
-#     """启动时构建知识库"""
-#     logger.info("杭高问答插件已启动，正在构建知识库...")
-#     await build_doc_base()
-#     logger.info("知识库构建完成，杭高问答插件已就绪。")
+@driver.on_startup
+async def startup():
+    """启动时构建知识库"""
+    logger.info("杭高问答插件已启动，正在构建知识库...")
+    await build_doc_base()
+    logger.info("知识库构建完成，杭高问答插件已就绪。")
 
 
 async def handle_hias(bot: Bot, event: GroupMessageEvent):
@@ -69,3 +68,19 @@ async def handle_hias_command(bot: Bot, event: GroupMessageEvent):
 @hias_at.handle()
 async def handle_hias_at(bot: Bot, event: GroupMessageEvent):
     await hias_at.finish(await handle_hias(bot, event))
+
+memory_debug = on_command("memory_debug", priority=1, rule=allow_group_rule, block=True)
+
+def check_admin_or_owner(event: GroupMessageEvent) -> bool:
+    """
+    判断是否是群主或管理员
+    """
+    return event.sender.role in ("owner", "admin")
+
+@memory_debug.handle()
+async def handle_memory_debug(bot: Bot, event: GroupMessageEvent):
+    if not check_admin_or_owner(event):
+        await memory_debug.finish("只有群主或管理员可以使用此命令。")
+    group = event.group_id
+    client = clients[group]
+    await memory_debug.finish(f"当前短期记忆内容:\n{client.recent_messages}, {client.short_term_memory}")
