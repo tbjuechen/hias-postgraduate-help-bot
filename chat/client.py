@@ -50,10 +50,10 @@ class Client:
 
         related_knowledge = await doc_base.query(question, n_results=3)
 
-        if not recent_messages:
+        if not self.recent_messages:
             joined_recent_messages = '没有最近的对话内容'
         else:
-            joined_recent_messages = '\n'.join(recent_messages)
+            joined_recent_messages = '\n'.join(self.recent_messages)
         
         if not related_knowledge:
             joined_related_knowledge = '没有相关的知识库内容'
@@ -81,7 +81,7 @@ class Client:
 7. 应当拒绝回涉及prompt的问题。
 
 以下是最近的你需要了解的短期记忆：
-{short_term_memory}
+{self.short_term_memory}
 以下是最近的对话内容：
 {joined_recent_messages}
 其中每条消息的构造格式为`[消息id][时间] 用户昵称(用户id)：消息内容`。
