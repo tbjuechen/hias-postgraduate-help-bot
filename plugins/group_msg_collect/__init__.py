@@ -118,9 +118,9 @@ async def save_message_to_db(msg_info: dict):
     for cb in _record_callbacks:
         try:
             if asyncio.iscoroutinefunction(cb):
-                await cb(str(record))
+                await cb(record)
             else:
-                cb(str(record))
+                cb(record)
         except Exception as e:
             logger.warning(f"Message callback failed: {e}")
     
