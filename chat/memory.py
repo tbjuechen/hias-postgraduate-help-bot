@@ -5,15 +5,15 @@ import asyncio
 # from plugins.group_msg_collect import on_message_save
 
 class MemoryList(list):
-    def __init__(self, callback:callable, *args, **kwargs):
+    def __init__(self, callback:callable, size_limit=20,*args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.size_limit = kwargs.get('size_limit', 20)
+        self.size_limit = size_limit
         self.callback = callback
         self.pointer = 0
     
     def append(self, object):
         super().append(object)
-        if len(self) > self.size_limit and self.pointer != 0:
+        if len(self) > self.size_limit and self.pointer == 0:
             self.callback(self.copy())
             self.pointer = len(self)
         

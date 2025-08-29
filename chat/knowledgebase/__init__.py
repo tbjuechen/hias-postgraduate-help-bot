@@ -3,8 +3,8 @@ import shutil
 from datetime import datetime
 
 # 删除知识库目录 当前版本每次重新构建知识库
-if os.path.exists('data/chromadb'):
-    shutil.rmtree('data/chromadb')
+# if os.path.exists('data/chromadb'):
+#     shutil.rmtree('data/chromadb')
 
 from .vdb import BaseCollection, Item
 from .text_splitter import RecursiveCharacterTextSplitter

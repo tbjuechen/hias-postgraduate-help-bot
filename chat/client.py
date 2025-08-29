@@ -1,15 +1,50 @@
-from .memory import short_term_memory, recent_messages
+from .memory import short_term_memory, recent_messages, MemoryList
 from .knowledgebase import doc_base
 from .load import build_doc_base
 
 import os
 import shutil
+import asyncio
 
 class Client:
     def __init__(self, *args, **kwargs):
         # 初始化客户端
         self.llm = kwargs.get('llm', None)
+        self.short_term_memory = ''
+        self.recent_messages = MemoryList(callback=lambda _: asyncio.create_task(self.process_memery()), size_limit=5)
 
+    async def process_memery(self):
+        """
+        处理短期记忆
+        """
+        if not self.recent_messages:
+            return
+        
+        joined_recent_messages = '\n'.join(self.recent_messages)
+        prompt = '''
+你是一个对话记忆压缩助手。
+
+你的任务是根据最近的对话内容，对现有的短期记忆进行更新，总结出对后续对话仍然有用的重要信息。
+
+请注意以下几点：
+1. 只保留对话中重要的信息，删除冗余或不必要的内容。
+2. 确保更新后的短期记忆简洁明了，便于后续对话使用。
+3. 确保短期记忆的时效性，删除过时的信息。
+4. 不要输出任何格式化的文本，只需提供纯文本的更新内容。
+5. 确保更新后的短期记忆不超过200字。
+'''
+        question = f'''
+现有的短期记忆是：{self.short_term_memory}
+最近的对话内容是：{joined_recent_messages}
+'''
+        # 模拟调用大模型API获取更新后的短期记忆
+        updated_memory = await self.llm(prompt, question)
+        # debug only
+        print(f"更新后的短期记忆: {updated_memory}")
+
+        self.short_term_memory = updated_memory
+        self.recent_messages.clear()
+        
     async def _generate_prompt(self, question: str) -> str:
         '''构造提示词'''
 
@@ -67,3 +102,14 @@ class Client:
         answer = await self.llm(prompt, question)
                 
         return answer
+    
+    def new_message(self, message: str):
+        """
+        处理新的消息
+        :param message: 新的消息内容
+        """
+        if not message:
+            return
+        
+        self.recent_messages.append(message)
+        return message
