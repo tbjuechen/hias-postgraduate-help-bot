@@ -59,7 +59,16 @@ async def handle_sign_check(bot: Bot, event: PrivateMessageEvent):
         creation_success = create_binding(event.user_id, name)
         if creation_success:
             await chat_recorder.send(f"校验成功！姓名 {name} 已绑定到你的 QQ 账号。你已被拉入报考群，请注意查收邀请。")
-            await bot.call_api("set_group_invite", group_id='665145078', user_id=event.user_id)
+            result = await bot.call_api("ArkShareGroup", group_id='665145078')
+            card_message = MessageSegment.json(data=result)
+            try:
+                await bot.send_private_msg(
+                    user_id=event.user_id,
+                    message=card_message
+                )
+                logger.info(f"已成功向 {event.user_id} 发送群卡片。")
+            except Exception as e:
+                logger.error(f"发送群卡片失败: {e}")
         else:
             await chat_recorder.send("校验失败：创建绑定时发生错误，请稍后重试或联系管理员。")
-        
+    
