@@ -22,27 +22,27 @@ class UserBinding(Base):
     # 模仿 MessageRecord 使用 BigInteger 存储 ID
     qq_id = Column(BigInteger, primary_key=True)
     
-    # 健：名字
-    # nullable=False: 名字不能为空
-    # unique=True: 名字必须是唯一的
-    name = Column(String(100), nullable=False, unique=True)
+    # 键：报名号
+    # nullable=False: 报名号不能为空
+    # unique=True: 报名号必须是唯一的
+    sign_id = Column(String(100), nullable=False, unique=True)
     
     # 复合索引 (模仿 MessageRecord 的风格)
     __table_args__ = (
-        # 为 'name' 字段创建索引，加快按名称查询
-        Index('idx_name', 'name'),
+        # 为 'sign_id' 字段创建索引，加快按报名号查询
+        Index('idx_sign_id', 'sign_id'),
     )
     
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
             'qq_id': self.qq_id,
-            'name': self.name,
+            'sign_id': self.sign_id,
         }
     
     def __str__(self):
         """字符串表示"""
-        return f"UserBinding(QQ: {self.qq_id}, Name: {self.name})"
+        return f"UserBinding(QQ: {self.qq_id}, sign ID: {self.sign_id})"
 
 # 3. 数据库初始化
 def init_database():
@@ -73,7 +73,7 @@ engine = init_database()
 # 创建一个 Session 工厂，插件将使用它来创建会话
 SessionLocal = sessionmaker(bind=engine)
 
-def check_binding_conflict(qq_id: int, name_to_bind: str) -> Optional[str]:
+def check_binding_conflict(qq_id: int, sign_id_to_bind: str) -> Optional[str]:
     """
     校验绑定冲突 (同步版本)
     
@@ -88,19 +88,19 @@ def check_binding_conflict(qq_id: int, name_to_bind: str) -> Optional[str]:
         ).one_or_none()
         
         if existing_binding_qq:
-            if existing_binding_qq.name == name_to_bind:
-                return f"你已经绑定过姓名为 {name_to_bind} 的信息，无需重复绑定。"
+            if existing_binding_qq.sign_id == sign_id_to_bind:
+                return f"你已经绑定过报名号为 {sign_id_to_bind} 的信息，无需重复绑定。"
             else:
-                return f"你的 QQ ({qq_id}) 已经绑定过其他姓名 ({existing_binding_qq.name})。"
+                return f"你的 QQ ({qq_id}) 已经绑定过其他报名号 ({existing_binding_qq.sign_id})。"
 
         # 2. 校验：这个人名是否已经被使用过
-        existing_binding_name = session.query(UserBinding).filter(
-            UserBinding.name == name_to_bind
+        existing_binding_sign_id = session.query(UserBinding).filter(
+            UserBinding.sign_id == sign_id_to_bind
         ).one_or_none()
         
-        if existing_binding_name:
+        if existing_binding_sign_id:
             # 名字被别人占用了
-            return f"姓名 {name_to_bind} 已经被 QQ ({str(existing_binding_name.qq_id)[:4]}...) 绑定使用。"
+            return f"报名号 {sign_id_to_bind} 已经被 QQ ({str(existing_binding_sign_id.qq_id)[:4]}...) 绑定使用。"
             
     finally:
         # 无论如何都要关闭会话
@@ -109,7 +109,7 @@ def check_binding_conflict(qq_id: int, name_to_bind: str) -> Optional[str]:
     # 3. 没有冲突
     return None
 
-def create_binding(qq_id: int, name_to_bind: str) -> bool:
+def create_binding(qq_id: int, sign_id_to_bind: str) -> bool:
     """
     创建新的绑定 (同步版本)
     
@@ -118,7 +118,7 @@ def create_binding(qq_id: int, name_to_bind: str) -> bool:
     session: Session = SessionLocal()
     try:
         # 创建新对象
-        new_binding = UserBinding(qq_id=qq_id, name=name_to_bind)
+        new_binding = UserBinding(qq_id=qq_id, sign_id=sign_id_to_bind)
         # 添加到会话
         session.add(new_binding)
         # 提交事务
