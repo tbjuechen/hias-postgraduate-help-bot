@@ -1,3 +1,5 @@
+import hashlib
+from pathlib import Path
 from nonebot import on_command, on_message, get_driver, logger
 from nonebot.adapters.onebot.v11 import Bot, Event, Message, PrivateMessageEvent, MessageSegment
 from utils.rules import allow_group_rule
@@ -5,9 +7,16 @@ from nonebot.plugin import PluginMetadata
 from nonebot.exception import FinishedException
 from nonebot.rule import to_me
 from collections import defaultdict
+import aiohttp
+import aiofiles
 
-
+from .ocr import OCRValidationError, ocr_check
 from .model import check_binding_conflict, create_binding
+
+DATA_DIR = Path("data")
+IMAGES_DIR = DATA_DIR / "sign_check_images"
+
+IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
 __plugin_meta__ = PluginMetadata(
     name="报考信息校验",
@@ -32,19 +41,48 @@ async def handle_sign_check(bot: Bot, event: PrivateMessageEvent):
         image_url = first_image.data.get("url")
 
         if not image_url:
-            logger.warning(f"用户 {event.user_id} 发送了图片，但无法获取URL。")
-            await chat_recorder.send("无法解析你发送的图片，请尝试重新发送。")
+            logger.warning(f"用户 {event.user_id} 发送了图片，但无法获取 URL。")
+            await chat_recorder.send("无法解析你发送的图片 URL，请尝试重新发送。")
             return
 
+        # 下载图片
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as response:
+                if response.status != 200:
+                    logger.error(f"下载图片失败，状态码: {response.status}")
+                    await chat_recorder.send("无法下载你发送的图片，请确保图片链接有效后重试。")
+                    return
+                content = await response.read()
+
+        # 根据图片内容生成 MD5 哈希值作为文件名
+        image_hash = hashlib.md5(content).hexdigest()
+        image_path = IMAGES_DIR / f"{image_hash}.{image_url.split('.')[-1]}"
+
+        # 检查该图片是否已存在，避免重复保存
+        if image_path.exists():
+            logger.info(f"图片已存在，跳过保存: {image_path}")
+            await chat_recorder.send("你发送的图片已被处理过，请勿重复发送相同图片。")
+            return
+
+        # 保存图片到本地
+        async with aiofiles.open(image_path, "wb") as f:
+            await f.write(content)
+
     except Exception as e:
-        logger.error(f"提取图片 URL 时出错: {e}")
+        logger.error(f"提取图片时出错: {e}")
         await chat_recorder.send("提取图片时发生错误，请重试。")
         return
     
     try:
         # await 会等待 ocr_check 函数执行完毕
         result, name = await ocr_check(image_url)
-        
+    
+    except OCRValidationError as e:
+        # 捕获自定义的 OCR 校验错误
+        logger.info(f"OCR 校验失败: {e}")
+        await chat_recorder.send(f"图片校验失败：{e}")
+        return
+
     except Exception as e:
         # 捕获 ocr_check 内部可能发生的未知错误
         logger.error(f"ocr_check 函数执行失败: {e}")
