@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import logging
 import os
 import sys
@@ -11,11 +10,15 @@ from typing import Tuple, TypedDict
 API_KEY = os.getenv("OCR_API_KEY")
 SECRET_KEY = os.getenv("OCR_SECRET_KEY")
 
-YEAR = 2026
-CHECKPOINT = "2025-10-27T22:00:00"
+YEAR = 2025
+CHECKPOINT = "2024-10-27T22:00:00"
 
 class OCRValidationError(Exception):
     """自定义异常类，用于表示 OCR 校验失败的情况"""
+    pass
+
+class QPSLimitError(Exception):
+    """自定义异常类，用于表示 OCR API 请求过于频繁的情况"""
     pass
 
 # JSON 类型定义
@@ -31,21 +34,27 @@ class OCRResult(TypedDict):
 async def get_ocr_result(image_url) -> OCRResult:
     token = await get_access_token()
     if token is None:
-        raise ValueError("无法获取 OCR API 的 Access Token")
+        raise RuntimeError("无法获取 OCR API 的 Access Token")
 
-    url = f"https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic?access_token={token}"
+    url = f"https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic?access_token={token}"
 
     quoted = parse.quote(image_url, safe='')
-    payload = f'url={quoted}&detect_direction=false&detect_language=false&paragraph=false&probability=false'
+    payload = f'url={quoted}&detect_direction=false&paragraph=false&probability=false&multidirectional_recognize=false'
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
-        'Authorization': 'Bearer '
     }
 
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, data=payload.encode("utf-8")) as resp:
             response_json = await resp.json()
+            if error_code := response_json.get("error_code"):
+                match error_code:
+                    case 18:
+                        raise QPSLimitError
+                    case _:
+                        raise RuntimeError(f"OCR API 返回错误，错误码: {error_code}, 信息: {response_json.get('error_msg')}")
+
             return OCRResult(
                 words_result=response_json.get("words_result", []),
                 words_result_num=response_json.get("words_result_num", 0),
@@ -90,8 +99,23 @@ def check_school(result: OCRResult) -> bool:
 def check_major(result: OCRResult) -> bool:
     return check(result, "报考专业", "085404", "085410")
 
+def check_exam(result: OCRResult) -> bool:
+    return check(result, "考试方式", "21")
+
+def check_plan(result: OCRResult) -> bool:
+    return check(result, "专项计划", "0", "4", "7")
+
+def check_type(result: OCRResult) -> bool:
+    return check(result, "报考类别", "11", "12")
+
 def check_department(result: OCRResult) -> bool:
     return check(result, "报考院系所", "216")
+
+def check_topic(result: OCRResult) -> bool:
+    return check(result, "研究方向", "01")
+
+def check_duration(result: OCRResult) -> bool:
+    return check(result, "学习方式", "全日制")
 
 def check_politics(result: OCRResult) -> bool:
     return check(result, "政治理论", "101")
@@ -109,7 +133,12 @@ def check_all(result: OCRResult) -> bool:
     check_list = [
         check_school,
         check_major,
+        check_exam,
+        check_plan,
+        check_type,
         check_department,
+        check_topic,
+        check_duration,
         check_politics,
         check_language,
         check_math,
@@ -158,21 +187,3 @@ async def ocr_check(image_url: str) -> Tuple[str, str]:
         raise OCRValidationError("图片识别结果校验未通过，请确保图片清晰且信息完整。")
 
     return True, id
-
-# 供命令行测试使用
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-
-    async def main(image_url: str):
-        try:
-            valid, name = await ocr_check(image_url)
-            print(f"Valid: {valid}, Name: {name}")
-        except Exception as e:
-            print(f"Error: {e}")
-
-    if len(sys.argv) != 2:
-        print("用法: python ocr.py <图片路径>")
-        sys.exit(1)
-
-    image_url = sys.argv[1]
-    asyncio.run(main(image_url))
