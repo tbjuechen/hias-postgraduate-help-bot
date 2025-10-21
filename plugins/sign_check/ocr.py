@@ -10,8 +10,8 @@ from typing import Tuple, TypedDict
 API_KEY = os.getenv("OCR_API_KEY")
 SECRET_KEY = os.getenv("OCR_SECRET_KEY")
 
-YEAR = 2025
-CHECKPOINT = "2024-10-27T22:00:00"
+YEAR = 2026
+CHECKPOINT = "2025-10-27T22:00:00"
 
 class OCRValidationError(Exception):
     """自定义异常类，用于表示 OCR 校验失败的情况"""
