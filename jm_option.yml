@@ -1,0 +1,32 @@
+client:
+  cache: null
+  domain: []
+  impl: api
+  postman:
+    meta_data:
+      headers: null
+      impersonate: chrome
+      proxies: {}
+    type: curl_cffi
+  retry_times: 5
+dir_rule:
+  base_dir: ./data/jm/download
+  rule: Bd_Pname
+download:
+  cache: true
+  image:
+    decode: true
+    suffix: null
+  threading:
+    image: 30
+    photo: 16
+log: true
+plugins:
+  valid: log
+version: '2.1'
+plugins:
+  after_photo:
+    - plugin: img2pdf
+      kwargs:
+        pdf_dir: ./data/jm/pdf # pdf存放文件夹
+        filename_rule: Aid # pdf命名规则，A代表album, name代表使用album.name也就是本子名称
