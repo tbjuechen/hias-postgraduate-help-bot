@@ -19,6 +19,14 @@ openai_client = AsyncOpenAI(
 
 async def llm_response(system_prompt:str, question: str) -> str:
     """使用 OpenAI API 获取回答"""
+    
+    if debug:
+        with open("debug_response.txt", "a", encoding="utf-8") as f:
+            f.write(f'''
+system_prompt: {system_prompt}
+question: {question}
+                  ''')
+    
     response = await openai_client.chat.completions.create(
         model=MODEL,
         messages=[
@@ -28,11 +36,5 @@ async def llm_response(system_prompt:str, question: str) -> str:
         temperature=0.7,
         stream=False
     )
-    if debug:
-        with open("debug_response.txt", "a", encoding="utf-8") as f:
-            f.write(f'''
-system_prompt: {system_prompt}
-question: {question}
-response: {response.choices[0].message.content.strip()}
-                    ''')
+
     return response.choices[0].message.content.strip()
