@@ -14,8 +14,8 @@ class MemoryList(list):
     def append(self, object):
         super().append(object)
         if len(self) > self.size_limit and self.pointer == 0:
-            self.callback(self.copy())
             self.pointer = len(self)
+            self.callback(self.copy())
         
     def clear(self):
         self[:] = self[self.pointer:]

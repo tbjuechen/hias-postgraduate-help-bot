@@ -5,22 +5,26 @@ from .load import build_doc_base
 import os
 import shutil
 import asyncio
+import logging
 
 class Client:
     def __init__(self, *args, **kwargs):
         # 初始化客户端
         self.llm = kwargs.get('llm', None)
         self.short_term_memory = ''
-        self.recent_messages = MemoryList(callback=lambda _: asyncio.create_task(self.process_memery()), size_limit=5)
+        # 使用 snapshot 回调，避免处理时读取共享列表带来的竞争
+        self.recent_messages = MemoryList(callback=lambda messages: asyncio.create_task(self.process_memery(messages)), size_limit=5)
+        self._logger = logging.getLogger(__name__)
 
-    async def process_memery(self):
+    async def process_memery(self, message_cache: list):
         """
-        处理短期记忆
+        处理短期记忆（接收 snapshot），避免在异步处理时读取被并发修改的共享列表
+        :param message_cache: MemoryList 在触发时传入的消息快照列表
         """
-        if not self.recent_messages:
+        if not message_cache:
             return
-        
-        joined_recent_messages = '\n'.join(self.recent_messages)
+
+        joined_recent_messages = '\n'.join(message_cache)
         prompt = '''
 你是一个对话记忆压缩助手。
 
@@ -37,13 +41,23 @@ class Client:
 现有的短期记忆是：{self.short_term_memory}
 最近的对话内容是：{joined_recent_messages}
 '''
-        # 模拟调用大模型API获取更新后的短期记忆
-        updated_memory = await self.llm(prompt, question)
-        # debug only
-        print(f"更新后的短期记忆: {updated_memory}")
+        try:
+            # 为 LLM 调用增加超时，避免长时间阻塞，使得 pointer 能在异常/超时后恢复
+            updated_memory = await asyncio.wait_for(self.llm(prompt, question), timeout=30)
+            # debug only
+            self._logger.debug("更新后的短期记忆: %s", updated_memory)
 
-        self.short_term_memory = updated_memory
-        self.recent_messages.clear()
+            self.short_term_memory = updated_memory
+        except asyncio.TimeoutError:
+            self._logger.warning("LLM 调用超时，跳过本次记忆更新")
+        except Exception as e:
+            self._logger.exception("处理短期记忆时出错: %s", e)
+        finally:
+            # 无论成功或失败，清理已处理的消息，重置 pointer，避免永久不触发的情况
+            try:
+                self.recent_messages.clear()
+            except Exception:
+                self._logger.exception("清理 recent_messages 失败")
         
     async def _generate_prompt(self, question: str) -> str:
         '''构造提示词'''
