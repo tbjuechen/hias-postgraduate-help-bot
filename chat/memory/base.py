@@ -22,6 +22,7 @@ class MemoryConfig(BaseModel):
 
     # 工作记忆配置
     working_memory_capacity: int = 10  # 最大记忆容量
+    working_memory_tokens: int = 1000  # 最大记忆Token数
 
     # 情景记忆配置
     episodic_memory_retention_days: int = 30  # 情景记忆保留天数
