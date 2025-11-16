@@ -95,7 +95,7 @@ class EpisodicMemory(BaseMemory):
                 end_time=end_ts,
                 limit=1000
             )
-            candidate_ids = set(m["memory_id"] for m in memories)
+            candidate_ids = set(m["id"] for m in memories)
 
         # 向量搜索
         try:
@@ -192,7 +192,7 @@ class EpisodicMemory(BaseMemory):
                 combined = base_relevance
 
                 item = MemoryItem(
-                    id=doc["memory_id"],
+                    id=doc["id"],
                     content=content,
                     memory_type=doc["memory_type"],
                     user_id=doc["user_id"],
@@ -272,7 +272,7 @@ class EpisodicMemory(BaseMemory):
         """清空所有情景记忆"""
         # 清空权威存储（SQLite）
         docs = self.doc_store.search_memories(memory_type="episodic", limit=10000)
-        ids = [d["memory_id"] for d in docs]
+        ids = [d["id"] for d in docs]
         for mid in ids:
             self.doc_store.delete_memory(mid)
 
@@ -315,10 +315,10 @@ class EpisodicMemory(BaseMemory):
         for d in docs:
             ts = int(d.get("timestamp", 0))
             if ts and ts < expire_ts:
-                to_remove_ids.append(d["memory_id"])
+                to_remove_ids.append(d["id"])
 
         # 2）按容量限制删除多余记忆（在时间过滤之后）
-        remaining_ids = [d["memory_id"] for d in docs if d["memory_id"] not in to_remove_ids]
+        remaining_ids = [d["id"] for d in docs if d["id"] not in to_remove_ids]
         if self.max_memory_capacity and len(remaining_ids) > self.max_memory_capacity:
             overflow = len(remaining_ids) - self.max_memory_capacity
             # 由于 docs 已按时间排序，前面的就是最老的
@@ -345,13 +345,13 @@ class EpisodicMemory(BaseMemory):
         items = []
         for doc in docs:
             item = MemoryItem(
-                id=doc["memory_id"],
+                id=doc["id"],
                 content=doc["content"],
                 memory_type=doc["memory_type"],
                 user_id=doc["user_id"],
                 group_id=doc["group_id"],
                 timestamp=datetime.fromtimestamp(doc["timestamp"]),
-                metadata=doc.get("properties", {})
+                metadata=doc.get("properties", {}) or {},
             )
             items.append(item)
         return items
