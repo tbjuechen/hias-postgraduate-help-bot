@@ -210,7 +210,7 @@ def create_embedding_model_with_fallback(
     )
 
 _lock = threading.RLock()
-_embedder = Optional[EmbeddingModel] = None
+_embedder:Optional[EmbeddingModel] = None
 
 def _build_embedder() -> EmbeddingModel:
     preferred = os.getenv("EMBED_MODEL_TYPE", "openai")
