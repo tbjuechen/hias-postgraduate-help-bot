@@ -18,7 +18,7 @@ class EmbeddingModel:
 class TFIDFEmbeddingModel(EmbeddingModel):
     """基于TF-IDF的简单嵌入模型"""
 
-    def __init__(self, max_features: int = 1000):
+    def __init__(self, max_features: int = 1000, **kwargs):
         self.max_features = max_features
         self._vectorizer = None
         self._is_fitted = False
@@ -177,16 +177,16 @@ class OpenAIEmbeddingModel(EmbeddingModel):
                 pass
         return self._dimension
     
-def create_embedding_model(model_type: str = "openai") -> EmbeddingModel:
+def create_embedding_model(model_type: str = "openai", **kwargs) -> EmbeddingModel:
     """根据模型类型创建嵌入模型实例
 
     :param model_type: 嵌入模型类型，支持 "openai" 和 "tfidf"
     :return: EmbeddingModel 实例
     """
     if model_type == "openai":
-        return OpenAIEmbeddingModel()
+        return OpenAIEmbeddingModel(**kwargs)
     elif model_type == "tfidf":
-        return TFIDFEmbeddingModel()
+        return TFIDFEmbeddingModel(**kwargs)
     else:
         raise ValueError(f"不支持的嵌入模型类型: {model_type}")
     
