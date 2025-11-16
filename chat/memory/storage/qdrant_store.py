@@ -341,30 +341,30 @@ class QdrantVectorStore:
                 if conditions:
                     query_filter = Filter(must=conditions)
 
-            # 构建搜索请求
+            # 构建搜索请求参数（使用 query_points 新接口）
             search_params = None
             try:
                 search_params = models.SearchParams(hnsw_ef=self.search_ef, exact=self.search_exact)
             except Exception:
                 search_params = None
 
-            search_result = self.client.search(
+            response = self.client.query_points(
                 collection_name=self.collection_name,
-                query_vector=query,
+                query=query,
                 query_filter=query_filter,
                 limit=top_k,
                 with_payload=True,
                 with_vectors=False,
-                search_params=search_params
+                search_params=search_params,
             )
 
             # 解析结果
             results = []
-            for hit in search_result:
+            for point in response.points:
                 result = {
-                    "id": hit.id,
-                    "score": hit.score,
-                    "metadata": hit.payload or {}
+                    "id": point.id,
+                    "score": point.score,
+                    "metadata": point.payload or {},
                 }
                 results.append(result)
             
