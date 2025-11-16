@@ -245,7 +245,7 @@ class SQLiteDocumentStore(DocumentStore):
             where_clause = "WHERE " + " AND ".join(where_conditions)
         
         cursor.execute(f"""
-            SELECT id, user_id, content, memory_type, timestamp, properties, created_at
+            SELECT id, user_id, group_id, content, memory_type, timestamp, properties, created_at
             FROM memories
             {where_clause}
             ORDER BY timestamp DESC
