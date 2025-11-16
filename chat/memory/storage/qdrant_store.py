@@ -220,7 +220,7 @@ class QdrantVectorStore:
                     self.client.create_payload_index(
                         collection_name=self.collection_name,
                         field_name=field_name,
-                        field_type=schema_type
+                        field_schema=models.PayloadSchemaType(schema_type),
                     )
                 except Exception as ie:
                     # 索引已存在会报错，忽略
