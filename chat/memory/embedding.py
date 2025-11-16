@@ -86,22 +86,21 @@ class OpenAIEmbeddingModel(EmbeddingModel):
         if not self.api_key:
             raise ValueError("必须设置 EMBEDDING_API_KEY 来启用文本嵌入功能")
 
-        # 延迟创建客户端，按需初始化（与 LLMClient 风格一致）
-        self._sync_client: Optional[OpenAI] = None
+        # 同步客户端在初始化时就创建，异步客户端懒加载
+        self._sync_client: OpenAI = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            **self.extra_kwargs,
+        )
         self._async_client: Optional[AsyncOpenAI] = None
-        # 维度懒加载：首次请求时再确定
+        # 维度：优先在初始化时通过一次轻量嵌入获取
         self._dimension: Optional[int] = None
+
 
     @property
     def sync_client(self) -> OpenAI:
-        """懒加载同步客户端"""
-        if self._sync_client is None:
-            self._sync_client = OpenAI(
-                api_key=self.api_key,
-                base_url=self.base_url,
-                timeout=self.timeout,
-                **self.extra_kwargs,
-            )
+        """同步客户端（在 __init__ 中已创建）。"""
         return self._sync_client
 
     @property
@@ -147,6 +146,7 @@ class OpenAIEmbeddingModel(EmbeddingModel):
         if isinstance(texts, str):
             resp = self.sync_client.embeddings.create(model=self.model, input=[texts])
             emb = resp.data[0].embedding
+            # 首次同步嵌入时记录向量维度
             if self._dimension is None:
                 self._dimension = len(emb)
             return emb
@@ -154,6 +154,7 @@ class OpenAIEmbeddingModel(EmbeddingModel):
         # 多条文本
         resp = self.sync_client.embeddings.create(model=self.model, input=texts)
         embs = [item.embedding for item in resp.data]
+        # 也可以通过多条文本的首个向量来初始化维度
         if self._dimension is None and embs:
             self._dimension = len(embs[0])
         return embs
@@ -162,7 +163,18 @@ class OpenAIEmbeddingModel(EmbeddingModel):
     def dimension(self) -> int:
         """向量维度（首次调用 encode/aencode 后才会被确定）"""
         if self._dimension is None:
-            raise ValueError("尚未进行过嵌入请求，无法确定维度")
+            # 尝试做一次极简嵌入来初始化维度；失败则保持懒加载
+            try:
+                resp = self._sync_client.embeddings.create(
+                    model=self.model,
+                    input=["init"],
+                )
+                emb = resp.data[0].embedding
+                if emb:
+                    self._dimension = len(emb)
+            except Exception:
+                # 不影响后续使用，维度仍会在首次 encode/aencode 时推断
+                pass
         return self._dimension
     
 def create_embedding_model(model_type: str = "openai") -> EmbeddingModel:
@@ -219,7 +231,7 @@ def _build_embedder() -> EmbeddingModel:
 
     kwargs = {}
     if model_name:
-        kwargs["model_name"] = model_name
+        kwargs["model"] = model_name
     
     api_key = os.getenv("EMBEDDING_API_KEY")
     if api_key:
