@@ -159,11 +159,19 @@ class LLMClient:
         if self._sync_client:
             self._sync_client.close()
         if self._async_client:
-            # AsyncOpenAI 使用 aclose()
+            # AsyncOpenAI 使用 aclose()，兼容无事件循环/有事件循环两种情况
             import asyncio
-            if asyncio.get_event_loop().is_running():
-                asyncio.create_task(self._async_client.close())
+
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop is not None and loop.is_running():
+                # 在已有事件循环中，调度关闭任务
+                loop.create_task(self._async_client.close())
             else:
+                # 无事件循环时，临时创建一个执行关闭
                 asyncio.run(self._async_client.close())
     
     def __del__(self):
