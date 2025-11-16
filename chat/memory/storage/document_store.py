@@ -104,7 +104,7 @@ class SQLiteDocumentStore(DocumentStore):
             self.local.connection = conn
         return self.local.connection
     
-    def __init_database(self):
+    def _init_database(self):
         """初始化数据库表"""
         conn = self.connection
         cursor = conn.cursor()
@@ -140,7 +140,6 @@ class SQLiteDocumentStore(DocumentStore):
             "CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories (user_id)",
             "CREATE INDEX IF NOT EXISTS idx_memories_type ON memories (memory_type)",
             "CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories (timestamp)",
-            "CREATE INDEX IF NOT EXISTS idx_memories_importance ON memories (importance)",
         ]
 
         for index_sql in indexes:
@@ -246,10 +245,10 @@ class SQLiteDocumentStore(DocumentStore):
             where_clause = "WHERE " + " AND ".join(where_conditions)
         
         cursor.execute(f"""
-            SELECT id, user_id, content, memory_type, timestamp, importance, properties, created_at
+            SELECT id, user_id, content, memory_type, timestamp, properties, created_at
             FROM memories
             {where_clause}
-            ORDER BY importance DESC, timestamp DESC
+            ORDER BY timestamp DESC
             LIMIT ?
         """, params + [limit])
 
