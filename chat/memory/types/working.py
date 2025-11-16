@@ -88,8 +88,6 @@ class WorkingMemory(BaseMemory):
         self.current_tokens = 0
 
     def get_stats(self) -> Dict[str, Any]:
-        self._expire_old_memories()
-
         active_memories = self.memories
 
         return {
