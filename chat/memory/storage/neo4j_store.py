@@ -328,4 +328,101 @@ class Neo4jGraphStore:
             logger.error(f"❌ 获取实体关系失败: {e}")
             return []
         
+    def delete_entity(self, entity_id: str) -> bool:
+        """
+        删除实体及其所有关系
+
+        :param entity_id: 实体ID
+        :return: 是否删除成功
+        """
+        try:
+            query = """
+            MATCH (e:Entity {id: $entity_id})
+            DETACH DELETE e
+            """
+            
+            with self.driver.session(database=self.database) as session:
+                result = session.run(query, entity_id=entity_id)
+                summary = result.consume()
+                
+                deleted_count = summary.counters.nodes_deleted
+                logger.info(f"✅ 删除实体: {entity_id} (删除 {deleted_count} 个节点)")
+                return deleted_count > 0
+                
+        except Exception as e:
+            logger.error(f"❌ 删除实体失败: {e}")
+            return False
     
+    def clear_all(self) -> bool:
+        """
+        清空所有数据
+        
+        :return: 是否清空成功
+        """
+        try:
+            query = "MATCH (n) DETACH DELETE n"
+            
+            with self.driver.session(database=self.database) as session:
+                result = session.run(query)
+                summary = result.consume()
+                
+                deleted_nodes = summary.counters.nodes_deleted
+                deleted_relationships = summary.counters.relationships_deleted
+                
+                logger.info(f"✅ 清空Neo4j数据库: 删除 {deleted_nodes} 个节点, {deleted_relationships} 个关系")
+                return True
+                
+        except Exception as e:
+            logger.error(f"❌ 清空数据库失败: {e}")
+            return False
+        
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        获取图数据库统计信息
+
+        :return: 统计信息字典
+        """
+        try:
+            queries = {
+                "total_nodes": "MATCH (n) RETURN count(n) as count",
+                "total_relationships": "MATCH ()-[r]->() RETURN count(r) as count",
+                "entity_nodes": "MATCH (n:Entity) RETURN count(n) as count",
+                "memory_nodes": "MATCH (n:Memory) RETURN count(n) as count",
+            }
+            
+            stats = {}
+            with self.driver.session(database=self.database) as session:
+                for key, query in queries.items():
+                    result = session.run(query)
+                    record = result.single()
+                    stats[key] = record["count"] if record else 0
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"❌ 获取统计信息失败: {e}")
+            return {}
+        
+
+    def health_check(self) -> bool:
+        """
+        健康检查连接
+
+        :return: 是否连接正常
+        """
+        try:
+            with self.driver.session(database=self.database) as session:
+                result = session.run("RETURN 1 as health")
+                record = result.single()
+                return record["health"] == 1
+        except Exception as e:
+            logger.error(f"❌ Neo4j健康检查失败: {e}")
+            return False
+        
+    def __del__(self):
+        """析构函数，清理资源"""
+        if hasattr(self, 'driver') and self.driver:
+            try:
+                self.driver.close()
+            except:
+                pass
