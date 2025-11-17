@@ -21,4 +21,7 @@ RUN apt-get update && \
 # 安装 Python 依赖
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN python -m spacy download zh_core_web_sm
+RUN python -m spacy download en_core_web_sm
+
 CMD ["python3", "bot.py"]
