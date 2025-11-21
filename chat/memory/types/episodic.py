@@ -42,6 +42,10 @@ class EpisodicMemory(BaseMemory):
     def add(self, memory_item: MemoryItem) -> str:
         """添加情景记忆"""
 
+        # 确保设置了整理状态，默认为 False (未整理)
+        if "consolidated" not in memory_item.metadata:
+            memory_item.metadata["consolidated"] = False
+
         # 1）权威存储（SQLite）
         ts_int = int(memory_item.timestamp.timestamp())
         self.doc_store.add_memory(
@@ -290,6 +294,21 @@ class EpisodicMemory(BaseMemory):
         - 按容量限制删除超出部分（优先删除最早的）
         返回被删除的记忆数量
         """
+        # 检查最旧的一条记忆是否已整理
+        # 如果最旧的记忆未整理，说明整理进度滞后，为防止丢失信息，暂停遗忘
+        oldest_memories = self.doc_store.search_memories(
+            memory_type=self.memory_type,
+            limit=1,
+            order_by="timestamp ASC"
+        )
+        
+        if oldest_memories:
+            oldest_mem = oldest_memories[0]
+            props = oldest_mem.get("properties", {}) or {}
+            # 默认为 False，如果未设置 consolidated
+            if not props.get("consolidated", False):
+                logger.debug(f"Skipping forget: Oldest memory {oldest_mem['id'][:8]} is not consolidated.")
+                return 0
 
         forgotten_count = 0
         current_time = datetime.now()
@@ -396,4 +415,47 @@ class EpisodicMemory(BaseMemory):
         # 转换为天，保留一位小数即可
         return span_seconds / 86400.0
     
-    
+    def get_unconsolidated_memories(self, limit: int = 10) -> List[MemoryItem]:
+        """获取未整理（未转化为语义记忆）的情景记忆
+        
+        Args:
+            limit: 返回数量限制
+            
+        Returns:
+            List[MemoryItem]: 未整理的记忆列表
+        """
+        memories_data = self.doc_store.search_memories(
+            filter_metadata={"consolidated": False},
+            limit=limit,
+            order_by="timestamp ASC"  # 优先处理最早的记忆
+        )
+        
+        items = []
+        for m in memories_data:
+            items.append(MemoryItem(
+                id=m["id"],
+                content=m["content"],
+                memory_type=m["memory_type"],
+                group_id=m["group_id"],
+                user_id=m["user_id"],
+                timestamp=datetime.fromtimestamp(m["timestamp"]),
+                metadata=m.get("properties", {}) or {}
+            ))
+        return items
+
+    def mark_as_consolidated(self, memory_ids: List[str]):
+        """标记记忆为已整理
+        
+        Args:
+            memory_ids: 记忆ID列表
+        """
+        for mid in memory_ids:
+            # 获取当前记忆以保留其他元数据
+            memory = self.doc_store.get_memory(mid)
+            if memory:
+                props = memory.get("properties", {}) or {}
+                props["consolidated"] = True
+                self.doc_store.update_memory(mid, properties=props)
+                logger.debug(f"Marked memory {mid} as consolidated")
+
+
