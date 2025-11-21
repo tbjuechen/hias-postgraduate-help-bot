@@ -4,6 +4,8 @@ import os
 import numpy as np
 from openai import OpenAI, AsyncOpenAI
 
+from loguru import logger
+
 class EmbeddingModel:
     """嵌入模型基类"""
 
@@ -97,6 +99,8 @@ class OpenAIEmbeddingModel(EmbeddingModel):
         # 维度：优先在初始化时通过一次轻量嵌入获取
         self._dimension: Optional[int] = None
 
+        logger.info(f"Initialized OpenAIEmbeddingModel with model: {self.model}")
+
 
     @property
     def sync_client(self) -> OpenAI:
@@ -165,6 +169,7 @@ class OpenAIEmbeddingModel(EmbeddingModel):
         if self._dimension is None:
             # 尝试做一次极简嵌入来初始化维度；失败则保持懒加载
             try:
+                logger.info("尝试初始化向量维度...")
                 resp = self._sync_client.embeddings.create(
                     model=self.model,
                     input=["init"],
@@ -175,6 +180,7 @@ class OpenAIEmbeddingModel(EmbeddingModel):
             except Exception:
                 # 不影响后续使用，维度仍会在首次 encode/aencode 时推断
                 pass
+        logger.debug(f"Embedding dimension: {self._dimension}")
         return self._dimension
     
 def create_embedding_model(model_type: str = "openai", **kwargs) -> EmbeddingModel:

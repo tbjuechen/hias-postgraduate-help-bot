@@ -34,37 +34,41 @@ def test_episodic_add_retrieve_and_stats(tmp_path, monkeypatch):
 
     mem = EpisodicMemory(config)
 
-    now = datetime.now()
-    item1 = MemoryItem(
-        id="e1",
-        content="第一次见到新同学",
-        memory_type="episodic",
-        user_id="u1",
-        group_id="g1",
-        timestamp=now - timedelta(days=1),
-        metadata={"tag": "meet"},
-    )
-    item2 = MemoryItem(
-        id="e2",
-        content="和同学一起讨论作业",
-        memory_type="episodic",
-        user_id="u1",
-        group_id="g1",
-        timestamp=now,
-        metadata={"tag": "study"},
-    )
+    try:
+        now = datetime.now()
+        item1 = MemoryItem(
+            id="e1",
+            content="第一次见到新同学",
+            memory_type="episodic",
+            user_id="u1",
+            group_id="g1",
+            timestamp=now - timedelta(days=1),
+            metadata={"tag": "meet"},
+        )
+        item2 = MemoryItem(
+            id="e2",
+            content="和同学一起讨论作业",
+            memory_type="episodic",
+            user_id="u1",
+            group_id="g1",
+            timestamp=now,
+            metadata={"tag": "study"},
+        )
 
-    mem.add(item1)
-    mem.add(item2)
+        mem.add(item1)
+        mem.add(item2)
 
-    # 检索应至少能拿到最近的一条
-    res = mem.retrieve("作业", top_k=5, user_id="u1", group_id="g1")
-    assert any(r.id == "e2" for r in res)
+        # 检索应至少能拿到最近的一条
+        res = mem.retrieve("作业", top_k=5, user_id="u1", group_id="g1")
+        assert any(r.id == "e2" for r in res)
 
-    stats = mem.get_stats()
-    assert stats["memory_type"] == "episodic"
-    assert stats["total_count"] >= 2
-    assert stats["time_span_days"] >= 0.0
+        stats = mem.get_stats()
+        assert stats["memory_type"] == "episodic"
+        assert stats["total_count"] >= 2
+        assert stats["time_span_days"] >= 0.0
+    finally:
+        if hasattr(mem, "doc_store"):
+            mem.doc_store.close()
 
 
 @pytest.mark.episodic
@@ -84,40 +88,44 @@ def test_episodic_forget_by_time_and_capacity(tmp_path, monkeypatch):
 
     mem = EpisodicMemory(config)
 
-    now = datetime.now()
-    # 一条很旧的记忆（超过保留天数）
-    old_item = MemoryItem(
-        id="old",
-        content="很久以前的事情",
-        memory_type="episodic",
-        user_id="u1",
-        group_id="g1",
-        timestamp=now - timedelta(days=30),
-        metadata={},
-    )
-
-    # 三条较新的记忆，用于测试容量裁剪
-    recent_items = [
-        MemoryItem(
-            id=f"r{i}",
-            content=f"最近的事情 {i}",
+    try:
+        now = datetime.now()
+        # 一条很旧的记忆（超过保留天数）
+        old_item = MemoryItem(
+            id="old",
+            content="很久以前的事情",
             memory_type="episodic",
             user_id="u1",
             group_id="g1",
-            timestamp=now - timedelta(days=i),
+            timestamp=now - timedelta(days=30),
             metadata={},
         )
-        for i in range(3)
-    ]
 
-    mem.add(old_item)
-    for it in recent_items:
-        mem.add(it)
+        # 三条较新的记忆，用于测试容量裁剪
+        recent_items = [
+            MemoryItem(
+                id=f"r{i}",
+                content=f"最近的事情 {i}",
+                memory_type="episodic",
+                user_id="u1",
+                group_id="g1",
+                timestamp=now - timedelta(days=i),
+                metadata={},
+            )
+            for i in range(3)
+        ]
 
-    forgotten = mem.forget()
+        mem.add(old_item)
+        for it in recent_items:
+            mem.add(it)
 
-    # 至少应该删除那条过期的 + 为满足容量再删一些
-    assert forgotten >= 2
-    # 最终保留数量不超过容量
-    remaining_ids = {m.id for m in mem.get_all()}
-    assert len(remaining_ids) <= config.episodic_memory_capacity
+        forgotten = mem.forget()
+
+        # 至少应该删除那条过期的 + 为满足容量再删一些
+        assert forgotten >= 2
+        # 最终保留数量不超过容量
+        remaining_ids = {m.id for m in mem.get_all()}
+        assert len(remaining_ids) <= config.episodic_memory_capacity
+    finally:
+        if hasattr(mem, "doc_store"):
+            mem.doc_store.close()
