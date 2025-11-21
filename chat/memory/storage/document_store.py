@@ -209,7 +209,9 @@ class SQLiteDocumentStore(DocumentStore):
         memory_type: Optional[str] = None,
         start_time: Optional[int] = None,
         end_time: Optional[int] = None,
-        limit: int = 10
+        limit: int = 10,
+        order_by: str = "timestamp DESC",
+        filter_metadata: Dict[str, Any] = None
     ) -> List[Dict[str, Any]]:
         """搜索记忆文档"""
         conn = self.connection
@@ -239,16 +241,32 @@ class SQLiteDocumentStore(DocumentStore):
             where_conditions.append("timestamp <= ?")
             params.append(end_time)
         
+        # JSON 字段过滤 (SQLite 语法)
+        if filter_metadata:
+            for key, value in filter_metadata.items():
+                # json_extract(properties, '$.key')
+                where_conditions.append(f"json_extract(properties, '$.{key}') = ?")
+                # 注意：SQLite JSON 提取出的布尔值可能是 0/1，需要适配
+                if isinstance(value, bool):
+                    params.append(1 if value else 0) # 或者 value 本身，取决于存的时候是 true/false 还是 1/0
+                else:
+                    params.append(value)
         
         where_clause = ""
         if where_conditions:
             where_clause = "WHERE " + " AND ".join(where_conditions)
         
+        # 安全检查 order_by 防止注入
+        allowed_sort_fields = ["timestamp", "created_at", "updated_at"]
+        sort_field = order_by.split()[0]
+        if sort_field not in allowed_sort_fields:
+            order_by = "timestamp DESC"
+
         cursor.execute(f"""
             SELECT id, user_id, group_id, content, memory_type, timestamp, properties, created_at
             FROM memories
             {where_clause}
-            ORDER BY timestamp DESC
+            ORDER BY {order_by}
             LIMIT ?
         """, params + [limit])
 
