@@ -98,7 +98,7 @@ def test_episodic_forget_by_time_and_capacity(tmp_path, monkeypatch):
             user_id="u1",
             group_id="g1",
             timestamp=now - timedelta(days=30),
-            metadata={},
+            metadata={"consolidated": True},
         )
 
         # 三条较新的记忆，用于测试容量裁剪
@@ -110,7 +110,7 @@ def test_episodic_forget_by_time_and_capacity(tmp_path, monkeypatch):
                 user_id="u1",
                 group_id="g1",
                 timestamp=now - timedelta(days=i),
-                metadata={},
+                metadata={"consolidated": True},
             )
             for i in range(3)
         ]
