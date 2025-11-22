@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Callable
 from datetime import datetime, timedelta
 
 from ..base import BaseMemory, MemoryItem, MemoryConfig
@@ -15,6 +15,8 @@ class WorkingMemory(BaseMemory):
         self.session_start = datetime.now()
 
         self.memories: List[MemoryItem] = []
+
+        self._forget_handlers: List[Callable[[MemoryItem], None]] = []
 
 
     def add(self, memory_item: MemoryItem) -> str:
@@ -143,6 +145,19 @@ class WorkingMemory(BaseMemory):
         oldest_idx = min(range(len(self.memories)), key=lambda i: self.memories[i].timestamp)
         oldest = self.memories.pop(oldest_idx)
 
+        # callback
+        for hander in self._forget_handlers:
+            try:
+                hander(oldest)
+            except Exception as e:
+                print(f"忘记记忆回调出错: {e}")
+
         # 更新当前Token数，确保不为负
         self.current_tokens -= len(oldest.content.split())
         self.current_tokens = max(0, self.current_tokens)
+
+
+    def on_forget(self, func: Callable[[MemoryItem], None]):
+        """装饰器钩子，当记忆被遗忘时回调"""
+        self._forget_handlers.append(func)
+        return func

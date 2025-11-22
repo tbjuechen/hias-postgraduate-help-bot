@@ -185,8 +185,14 @@ class SemanticMemory(BaseMemory):
             self.nlp = None
             self.nlp_models = {}
 
-    def add(self, memory_item: MemoryItem) -> str:
-        """添加语义记忆"""
+    def add(self, memory_item: MemoryItem, entities: List[Entity] = None, relations: List[Relation] = None) -> str:
+        """添加语义记忆
+        
+        Args:
+            memory_item: 记忆项
+            entities: 可选，预提取的实体列表。如果为None，则自动提取。
+            relations: 可选，预提取的关系列表。如果为None，则自动提取。
+        """
         try:
             # 1. 计算嵌入向量
             embedding = self.embedding_model.encode(memory_item.content)
@@ -194,9 +200,12 @@ class SemanticMemory(BaseMemory):
             if hasattr(embedding, "tolist"):
                 embedding = embedding.tolist()
 
-            # 2. 提取实体和关系
-            entities = self._extract_entities(memory_item.content)
-            relations = self._extract_relations(memory_item.content, entities)
+            # 2. 提取实体和关系 (如果未提供)
+            if entities is None:
+                entities = self._extract_entities(memory_item.content)
+            
+            if relations is None:
+                relations = self._extract_relations(memory_item.content, entities)
 
             # 3. 存储到Neo4j图数据库
             for entity in entities:
