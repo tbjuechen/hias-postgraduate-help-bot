@@ -74,6 +74,7 @@ class MemoryManager:
             memory_type=memory_type,
             group_id=self.group_id,
             user_id=user_id,
+            timestamp=datetime.now(),
             metadata=metadata or {},
         )
         
@@ -81,6 +82,7 @@ class MemoryManager:
         if memory_type in self.memory_types:
             memory_id = self.memory_types[memory_type].add(memooy_item)
             logger.debug(f"添加记忆项到 {memory_type} 记忆，ID: {memory_id}")
+            return memory_id
         else:
             raise ValueError(f"不支持的记忆类型: {memory_type}")
         
