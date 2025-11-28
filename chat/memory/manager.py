@@ -92,28 +92,38 @@ class MemoryManager:
         memory_type: Optional[List[str]] = None,
         top_k: int = 5,
         time_range: Optional[tuple] = None,
-    ) -> List[MemoryItem]:
+    ) -> Dict[str, List[MemoryItem]]:
         """
         检索记忆项
         
         :param query: 检索查询
         :param memory_type: 记忆类型
-        :param top_k: 返回的记忆项数量
-        :return: 记忆项列表
+        :param top_k: 返回的记忆项数量 (仅限制长期记忆)
+        :return: 记忆项字典 {type: [items]}
         """
         if memory_type is None:
             memory_type = list(self.memory_types.keys())
         
         all_results = {}
-        per_type_limit = max(1, top_k // len(memory_type))
+        
+        # 计算长期记忆类型的数量
+        long_term_types = [t for t in memory_type if t != "working"]
+        
+        # 分配 top_k 给长期记忆
+        per_type_limit = top_k
+        if long_term_types:
+            per_type_limit = max(1, top_k // len(long_term_types))
         
         for m_type in memory_type:
             if m_type in self.memory_types:
                 memory_instance = self.memory_types[m_type]
                 try:
+                    # Working Memory 获取所有（传入较大 limit），其他类型使用分配的 limit
+                    current_limit = 999 if m_type == "working" else per_type_limit
+                    
                     type_results = memory_instance.retrieve(
                         query=query,
-                        top_k=per_type_limit,
+                        top_k=current_limit,
                         group_id=self.group_id
                     )
                     all_results[m_type] = type_results
