@@ -1,7 +1,7 @@
 from typing import Dict
 from nonebot import on_command, on_message, get_driver, logger
 from nonebot.adapters.onebot.v11 import Bot, Event, Message, GroupMessageEvent, MessageSegment
-from utils.rules import allow_group_rule
+from utils.rules import allow_group_rule, group_owner_admin_rule
 from nonebot.plugin import PluginMetadata
 from nonebot.exception import FinishedException
 from nonebot.rule import to_me
@@ -123,3 +123,19 @@ async def handle_chat(bot: Bot, event: GroupMessageEvent):
         logger.error(f"Chat error: {e}")
         await chat_at.finish(f"抱歉，发生错误了：{str(e)} 😢 请稍后再试或联系管理员。")
     
+
+# 仅允许群聊且为群主/管理员的命令
+chat_debug = on_command("chat_debug", rule=group_owner_admin_rule, priority=5, block=True)
+
+@chat_debug.handle()
+async def handle_chat_debug(bot: Bot, event: GroupMessageEvent):
+    try:
+        current_group_id = str(event.group_id)
+        working_memories_stats = group_agents[current_group_id].memory_manager.memory_types['working'].get_stats()
+        debug_info = f"工作记忆统计信息：\n{working_memories_stats}"
+        await chat_debug.finish(debug_info)
+    except FinishedException:
+        raise
+    except Exception as e:
+        logger.error(f"Chat debug error: {e}")
+        await chat_debug.finish(f"抱歉，获取调试信息时发生错误：{str(e)} 😢 请稍后再试或联系管理员。")
