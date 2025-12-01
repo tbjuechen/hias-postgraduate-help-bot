@@ -135,7 +135,6 @@ class GroupChatAgent(Agent):
         处理输入的查询并返回响应
 
         :param query: 用户输入的查询
-        :param user_id: 用户ID
         :param reply_string: 可选的回复字符串列表，用于多轮对话
         :return: 生成的响应文本
         """
