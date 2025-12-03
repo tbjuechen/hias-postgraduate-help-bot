@@ -145,3 +145,5 @@ environment.yml
 test.py
 
 debug*
+
+.DS_Store
