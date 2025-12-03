@@ -4,6 +4,7 @@ from ..core.llm import LLMClient
 from ..core.config import Config
 from ..core.message import Message
 from ..memory import MemoryManager, MemoryItem, MemoryConfig
+from ..rag import RAGClient
 
 class GroupChatAgent(Agent):
     def __init__(
@@ -35,6 +36,7 @@ class GroupChatAgent(Agent):
         else:
             self.memory_manager = None
 
+        self.rag_client = RAGClient()
     
     def _search_memory(
         self,
@@ -95,6 +97,14 @@ class GroupChatAgent(Agent):
 相关记忆：
 {related_memories}
 """
+        # RAG client 上下文
+        rag_contexts = self.rag_client.search_advanced(query)
+        if rag_contexts:
+            rag_lines = ["【外部知识】:"]
+            for ctx in rag_contexts:
+                rag_lines.append(f"- {ctx['content']}")
+            prompt += "\n" + "\n".join(rag_lines) + "\n"
+
         if custom_prompt:
             prompt += f"\n{custom_prompt}"
         return prompt
