@@ -443,6 +443,12 @@ class EpisodicMemory(BaseMemory):
             ))
         return items
 
+    def count_unconsolidated_memories(self) -> int:
+        """统计未整理的情景记忆数量"""
+        return self.doc_store.count_memories(
+            filter_metadata={"consolidated": False}
+        )
+
     def mark_as_consolidated(self, memory_ids: List[str]):
         """标记记忆为已整理
         

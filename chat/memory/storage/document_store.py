@@ -43,6 +43,19 @@ class DocumentStore(ABC):
         pass
 
     @abstractmethod
+    def count_memories(
+        self,
+        user_id: Optional[str] = None,
+        group_id: Optional[str] = None,
+        memory_type: Optional[str] = None,
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
+        filter_metadata: Dict[str, Any] = None
+    ) -> int:
+        """统计记忆文档数量"""
+        pass
+
+    @abstractmethod
     def update_memory(
         self,
         memory_id: str,
@@ -279,6 +292,71 @@ class SQLiteDocumentStore(DocumentStore):
         
         return memories
     
+    def count_memories(
+        self,
+        user_id: Optional[str] = None,
+        group_id: Optional[str] = None,
+        memory_type: Optional[str] = None,
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
+        filter_metadata: Dict[str, Any] = None
+    ) -> int:
+        """统计记忆文档数量"""
+        conn = self.connection
+        cursor = conn.cursor()
+
+        # 构建查询条件
+        where_conditions = []
+        params = []
+        
+        if user_id:
+            where_conditions.append("user_id = ?")
+            params.append(user_id)
+        
+        if group_id:
+            where_conditions.append("group_id = ?")
+            params.append(group_id)
+        
+        if memory_type:
+            where_conditions.append("memory_type = ?")
+            params.append(memory_type)
+        
+        if start_time:
+            where_conditions.append("timestamp >= ?")
+            params.append(start_time)
+        
+        if end_time:
+            where_conditions.append("timestamp <= ?")
+            params.append(end_time)
+        
+        # JSON 字段过滤 (SQLite 语法)
+        if filter_metadata:
+            for key, value in filter_metadata.items():
+                # json_extract(properties, '$.key')
+                where_conditions.append(f"json_extract(properties, '$.{key}') = ?")
+                if isinstance(value, bool):
+                    params.append(1 if value else 0) # 假设存储时 bool 转为了 0/1，或者 SQLite JSON 自动处理
+                    # 注意：如果存储的是 JSON true/false，SQLite json_extract 可能会返回 0/1 或者 'true'/'false'
+                    # 这里为了保险，可能需要检查数据存储格式。
+                    # 之前 add_memory 用的是 json.dumps(properties)，所以是 JSON true/false。
+                    # SQLite json_extract 提取出的值类型取决于 SQLite 版本和 JSON 扩展。
+                    # 通常 json_extract('{"a":true}', '$.a') 返回 1 (integer) 或者 'true' (text)
+                    # 让我们假设它是 1/0，因为之前 search_memories 也是这么写的。
+                else:
+                    params.append(value)
+        
+        where_clause = ""
+        if where_conditions:
+            where_clause = "WHERE " + " AND ".join(where_conditions)
+        
+        cursor.execute(f"""
+            SELECT COUNT(*) AS count
+            FROM memories
+            {where_clause}
+        """, params)
+
+        return cursor.fetchone()["count"]
+
     def update_memory(
         self,
         memory_id: str,

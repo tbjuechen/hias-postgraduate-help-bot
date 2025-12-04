@@ -282,3 +282,9 @@ class MemoryManager:
         
         if total_processed > 0:
             logger.info(f"成功整理 {total_processed} 条情景记忆")
+
+    def get_unconsolidated_count(self) -> int:
+        """获取未整理的情景记忆数量"""
+        if "episodic" in self.memory_types:
+            return self.memory_types["episodic"].count_unconsolidated_memories()
+        return 0
