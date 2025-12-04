@@ -66,7 +66,7 @@ class EpisodicMemory(BaseMemory):
             
             self.vector_store.add_vector(
                 vectors=[embedding],
-                metadata=[{
+                metadatas=[{
                     "memory_id": memory_item.id,
                     "memory_type": self.memory_type,
                     "user_id": memory_item.user_id,
@@ -76,7 +76,7 @@ class EpisodicMemory(BaseMemory):
                 ids=[memory_item.id]
             )
         except Exception as e:
-            pass
+            logger.error(f"[Memory] Failed to add vector for memory {memory_item.id}: {e}")
         
         return memory_item.id
 
