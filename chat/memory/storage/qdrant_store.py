@@ -231,14 +231,14 @@ class QdrantVectorStore:
     def add_vector(
         self,
         vectors: List[List[float]],
-        metadata: List[Dict[str, Any]],
+        metadatas: List[Dict[str, Any]],
         ids: Optional[List[str]] = None
     ) -> bool:
         """
         添加向量到Qdrant中
         
         :param vectors: 向量列表
-        :param metadata: 每个向量对应的元数据列表
+        :param metadatas: 每个向量对应的元数据列表
         :param ids: 可选的向量ID列表
         :return: 是否成功
         """
@@ -251,10 +251,10 @@ class QdrantVectorStore:
                 ids = [f"vec_{str(uuid.uuid4())}" for _ in range(len(vectors))]
             
             # 构建点数据
-            logger.info(f"[Qdrant] add_vectors start: n_vectors={len(vectors)} n_meta={len(metadata)} collection={self.collection_name}")
+            logger.info(f"[Qdrant] add_vectors start: n_vectors={len(vectors)} n_meta={len(metadatas)} collection={self.collection_name}")
             points = []
 
-            for i, (vector, meta, point_id) in enumerate(zip(vectors, metadata, ids)):
+            for i, (vector, meta, point_id) in enumerate(zip(vectors, metadatas, ids)):
                 try:
                     vlen = len(vector)
                 except Exception:
