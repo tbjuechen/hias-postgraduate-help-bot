@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 from pathlib import Path
 
 # 添加项目根目录到 sys.path
@@ -10,8 +11,17 @@ from chat.rag.client import RAGClient
 from loguru import logger
 
 def main():
+    parser = argparse.ArgumentParser(description="构建知识库")
+    parser.add_argument("--chunk-size", type=int, default=800, help="文本块大小")
+    parser.add_argument("--overlap", type=int, default=100, help="文本块重叠大小")
+    args = parser.parse_args()
+
     # 初始化 RAG 客户端
-    rag_client = RAGClient(namespace="hias_docs")
+    rag_client = RAGClient(
+        namespace="hias_docs",
+        chunk_size=args.chunk_size,
+        overlap=args.overlap
+    )
     
     # 定义文档目录
     docs_dir = os.path.join(project_root, "src", "docs")
