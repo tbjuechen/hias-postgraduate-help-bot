@@ -1,5 +1,5 @@
 from typing import Dict
-from nonebot import on_command, on_message, get_driver, logger
+from nonebot import on_command, on_message, get_driver, logger, require
 from nonebot.adapters.onebot.v11 import Bot, Event, Message, GroupMessageEvent, MessageSegment
 from utils.rules import allow_group_rule, group_owner_admin_rule
 from nonebot.plugin import PluginMetadata
@@ -19,7 +19,7 @@ group_agents: Dict[str, GroupChatAgent] = {}
 def get_group_agent(group_id: str) -> GroupChatAgent:
     """获取或创建群组对应的 Agent"""
     if group_id not in group_agents:
-        logger.info(f"Initializing new GroupChatAgent for group {group_id}")
+        logger.info(f"正在为群组 {group_id} 初始化新的 GroupChatAgent")
         
         # 1. 初始化 LLM (建议从 NoneBot 配置或环境变量读取)
         # 这里假设 LLMClient 会自动读取环境变量 OPENAI_API_KEY 等
@@ -75,7 +75,7 @@ def handle_new_message(message, message_str):
             metadata={"source": "group_chat_stream"}
         )
     except Exception as e:
-        logger.warning(f"Failed to save group message to memory: {e}")
+        logger.warning(f"保存群消息到记忆失败: {e}")
 
 driver = get_driver()
 
@@ -120,7 +120,7 @@ async def handle_chat(bot: Bot, event: GroupMessageEvent):
     except FinishedException:
         raise
     except Exception as e:
-        logger.error(f"Chat error: {e}")
+        logger.error(f"聊天处理错误: {e}")
         await chat_at.finish(f"抱歉，发生错误了：{str(e)} 😢 请稍后再试或联系管理员。")
     
 
@@ -142,5 +142,48 @@ async def handle_chat_debug(bot: Bot, event: GroupMessageEvent):
     except FinishedException:
         raise
     except Exception as e:
-        logger.error(f"Chat debug error: {e}")
+        logger.error(f"聊天调试错误: {e}")
         await chat_debug.finish(f"抱歉，获取调试信息时发生错误：{str(e)} 😢 请稍后再试或联系管理员。")
+
+# 定时任务：整理记忆
+try:
+    require("nonebot_plugin_apscheduler")
+    from nonebot_plugin_apscheduler import scheduler
+
+    @scheduler.scheduled_job("interval", hours=1, id="chat_memory_consolidation")
+    async def run_memory_consolidation():
+        logger.info("[Chat] 开始执行定时记忆整理任务...")
+        # 遍历所有已加载的群组 Agent
+        for group_id, agent in list(group_agents.items()):
+            try:
+                manager = agent.memory_manager
+                # 获取未整理的记忆数量
+                count = manager.get_unconsolidated_count()
+                
+                # 如果未整理数量超过 100，触发整理流程
+                if count > 100:
+                    logger.info(f"[Chat] 群组 {group_id} 有 {count} 条未整理记忆，触发整理流程。")
+                    
+                    # 循环整理，直到未整理数量小于 50
+                    while count >= 50:
+                        # 每次处理 50 条
+                        # 注意：consolidate_memories 内部会自动创建 LLMClient 如果未提供
+                        await manager.consolidate_memories(limit=50)
+                        
+                        # 重新获取数量以检查进度
+                        new_count = manager.get_unconsolidated_count()
+                        logger.debug(f"[Chat] 群组 {group_id} 剩余未整理记忆: {new_count}")
+                        
+                        # 死循环保护：如果数量没有减少（说明整理可能失败或无有效内容），强制跳出
+                        if new_count >= count:
+                            logger.warning(f"[Chat] 群组 {group_id} 记忆数量未减少 ({count} -> {new_count})。为防止死循环，中止整理。")
+                            break
+                        
+                        count = new_count
+                        
+                    logger.info(f"[Chat] 群组 {group_id} 整理完成。最终数量: {count}")
+            except Exception as e:
+                logger.error(f"[Chat] 群组 {group_id} 记忆整理过程中出错: {e}")
+
+except Exception as e:
+    logger.warning(f"加载 apscheduler 失败，定时任务将不会运行: {e}")
