@@ -22,7 +22,6 @@ build==1.2.2.post1
 cachetools==5.5.2
 catalogue==2.0.10
 certifi==2024.2.2
-cffi==1.17.1
 charset-normalizer==3.4.2
 chromadb==1.0.12
 cloudpathlib==0.23.0
