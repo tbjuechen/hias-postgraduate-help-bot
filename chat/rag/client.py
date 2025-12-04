@@ -82,7 +82,7 @@ class DocumentLoader:
         logger.info(f"[RAG] 对 PDF 文件进行增强处理: {path}")
 
         # 使用 markitdown 提取文本
-        if self.markitdown is not None:
+        if self.markitdown is None:
             return self._fallback_text_reader(path)
         
         try:
