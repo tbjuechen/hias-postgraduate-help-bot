@@ -1,6 +1,6 @@
 [project]
 name = "hias-postgraduate-help-bot"
-version = "1.0.0"
+version = "2.0.0"
 description = """
 国科大杭高院智能学院考研群机器人
 提供AI问答、AI省流、水群统计、自动审批等功能
