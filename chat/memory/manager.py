@@ -7,6 +7,7 @@ from loguru import logger
 
 from .base import MemoryItem, MemoryConfig
 from .types import WorkingMemory, EpisodicMemory, SemanticMemory
+from ..core.llm import LLMClient
 
 class MemoryManager:
     """记忆管理器 - 统一的记忆操作接口
@@ -145,7 +146,7 @@ class MemoryManager:
                 episodic_memory.add(item)
                 logger.info(f"工作记忆遗忘，已转移到情景记忆，ID: {item.id}")
     
-    async def consolidate_memories(self, llm_client: Any, limit: int = 10):
+    async def consolidate_memories(self, llm_client: Optional[LLMClient] = None, limit: int = 10):
         """
         整理情景记忆到语义记忆（异步）
         
@@ -155,6 +156,13 @@ class MemoryManager:
         if "episodic" not in self.memory_types or "semantic" not in self.memory_types:
             logger.warning("情景记忆或语义记忆未启用，无法进行整理")
             return
+        
+        if llm_client is None:
+            try:
+                llm_client = LLMClient()
+            except Exception as e:
+                logger.error(f"无法初始化 LLMClient: {e}")
+                return
 
         episodic = self.memory_types["episodic"]
         semantic = self.memory_types["semantic"]
