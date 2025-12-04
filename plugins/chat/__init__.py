@@ -130,9 +130,14 @@ chat_debug = on_command("chat_debug", rule=group_owner_admin_rule, priority=5, b
 @chat_debug.handle()
 async def handle_chat_debug(bot: Bot, event: GroupMessageEvent):
     try:
+        debug_info = "群聊机器人调试信息：\n"
         current_group_id = str(event.group_id)
         working_memories_stats = group_agents[current_group_id].memory_manager.memory_types['working'].get_stats()
-        debug_info = f"工作记忆统计信息：\n{working_memories_stats}"
+        debug_info += f"工作记忆统计信息：\n{working_memories_stats}\n"
+        episodic_memories_stats = group_agents[current_group_id].memory_manager.memory_types['episodic'].get_stats()
+        debug_info += f"情景记忆统计信息：\n{episodic_memories_stats}\n"
+        unconsolidated_count = group_agents[current_group_id].memory_manager.get_unconsolidated_count()
+        debug_info += f"未整理的情景记忆数量：{unconsolidated_count}\n"
         await chat_debug.finish(debug_info)
     except FinishedException:
         raise
