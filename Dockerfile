@@ -39,4 +39,7 @@ RUN python -m spacy download zh_core_web_sm && \
 # 4. 最后复制项目代码
 COPY . .
 
-CMD ["sh", "-c", "nb orm upgrade && python3 bot.py"]
+# 5. 设置启动脚本权限
+RUN chmod +x scripts/entrypoint.sh
+
+CMD ["./scripts/entrypoint.sh"]
