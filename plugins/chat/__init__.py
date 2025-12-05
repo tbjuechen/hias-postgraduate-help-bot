@@ -110,7 +110,6 @@ async def handle_chat(bot: Bot, event: GroupMessageEvent):
         # 注意：run 方法内部会自动将 query 和 response 存入 memory
         answer = await agent.run(
             query=query,
-            user_id=user_id,
             reply_string=reply_context
         )
         
