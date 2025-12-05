@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11
 
 # 设置环境变量
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -10,11 +10,10 @@ WORKDIR /app
 # 安装系统依赖
 # ffmpeg: 多媒体处理
 # fonts-*: 字体支持
-# build-essential: 编译依赖
+# python:3.11 基础镜像已包含 build-essential (gcc/g++)，无需重复安装
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ffmpeg \
-        build-essential \
         fonts-wqy-zenhei \
         fonts-wqy-microhei \
         fonts-arphic-uming \
