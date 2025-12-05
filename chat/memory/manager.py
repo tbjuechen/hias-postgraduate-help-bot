@@ -223,6 +223,8 @@ class MemoryManager:
                 )
                 
                 result_text = response.choices[0].message.content
+
+                logger.debug(f"LLM 整理结果: {result_text[:200]}...")
                 
                 # 4. 解析 JSON
                 facts = []

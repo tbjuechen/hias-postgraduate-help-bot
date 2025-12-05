@@ -229,7 +229,7 @@ class SemanticMemory(BaseMemory):
 
             success = self.vector_store.add_vector(
                 vectors=[embedding],
-                metadata=[metadata],
+                metadatas=[metadata],
                 ids=[memory_item.id]
             )
 
