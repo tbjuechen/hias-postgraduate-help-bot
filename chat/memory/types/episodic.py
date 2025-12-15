@@ -144,7 +144,7 @@ class EpisodicMemory(BaseMemory):
             combined = 0.7 * vector_score + 0.3 * recency_score
 
             item = MemoryItem(
-                id=doc["memory_id"],
+                id=doc["id"],  # 修复: 使用 "id" 而不是 "memory_id"
                 content=doc["content"],
                 memory_type=doc["memory_type"],
                 user_id=doc["user_id"],
