@@ -639,7 +639,7 @@ class StorageManager:
 
         try:
             return  self.vector_store.search_vectors(
-                query_vector=qv,
+                query=qv,
                 top_k=top_k,
                 where=where,
                 score_threshold=score_threshold,

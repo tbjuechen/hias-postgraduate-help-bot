@@ -312,6 +312,7 @@ class QdrantVectorStore:
         query: List[float],
         top_k: int = 5,
         where: Optional[Dict[str, Any]] = None,
+        score_threshold: Optional[float] = None
     ) -> List[Dict[str, Any]]:
         """
         在Qdrant中搜索相似向量
@@ -319,6 +320,7 @@ class QdrantVectorStore:
         :param query: 查询向量
         :param top_k: 返回的最相似向量数量
         :param where: 可选的过滤条件
+        :param score_threshold: 可选的分数阈值，低于此值的结果将被过滤
         :return: 包含相似向量和元数据的列表
         """
         try:
@@ -366,7 +368,8 @@ class QdrantVectorStore:
                     "score": point.score,
                     "metadata": point.payload or {},
                 }
-                results.append(result)
+                if score_threshold is None or (point.score is not None and point.score >= score_threshold):
+                    results.append(result)
             
             logger.debug(f"🔍 Qdrant搜索返回 {len(results)} 个结果")
             return results
