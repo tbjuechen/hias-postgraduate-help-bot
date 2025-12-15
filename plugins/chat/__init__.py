@@ -88,9 +88,7 @@ def get_reply_chain(message_id: str) -> list[str]:
     """获取消息回复链的文本内容"""
     # 假设 MessageRecorderAPI 返回的是字符串列表，如果不是需要转换
     reply_chain = MessageRecorderAPI.get_reply_chain(message_id)
-    if isinstance(reply_chain, str):
-        return [reply_chain]
-    return reply_chain or []
+    return [str(msg) for msg in reply_chain]
 
 
 @chat_at.handle()
