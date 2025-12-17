@@ -8,6 +8,7 @@ from loguru import logger
 from .base import MemoryItem, MemoryConfig
 from .types import WorkingMemory, EpisodicMemory, SemanticMemory
 from ..core.llm import LLMClient
+from .types.semantic import Entity, Relation
 
 class MemoryManager:
     """记忆管理器 - 统一的记忆操作接口
@@ -199,10 +200,13 @@ class MemoryManager:
 你是一个记忆整理专家。请阅读以下按时间顺序排列的原始对话记忆片段，将它们重新组织、归纳为若干条独立的语义记忆。
 
 任务要求：
-1. **归纳与合并**：不要简单翻译每一句话。请根据语义主题，将分散在不同时间点的相关信息合并成一条完整的记忆。例如，用户分三次提到的考研计划细节，应整理为一条完整的考研计划记忆。
-2. **数量自定**：根据内容丰富程度，自行决定生成多少条（n条）语义记忆。如果没有有价值的信息，可以返回空数组。
-3. **内容精炼**：去除寒暄（如"你好"、"谢谢"）和无关废话。生成的 memory content 必须是客观、清晰的陈述句。
-4. **重要性打分**：为每条记忆赋予一个重要性分数（importance，0.0-1.0），0.0表示微不足道，1.0表示极其重要（如关键事实、长期偏好）。
+1. **归纳与合并**：不要简单翻译每一句话。请根据语义主题，将分散在不同时间点的相关信息合并成一条完整的记忆。
+2. **自由决定数量**：根据内容的丰富程度和主题的分散程度，**自行决定**生成多少条语义记忆（返回一个记忆列表）。
+3. **提取实体与关系**：对于每条生成的语义记忆，请提取其中的关键实体（Entities）和实体间的关系（Relations）。
+    - 实体：包含名称（name）和类型（type，如 PERSON, ORG, LOC, EVENT, DATE, CONCEPT 等）。
+    - 关系：包含主体（subject）、客体（object）和关系类型（relation，如 PARTICIPATED_IN, LOCATED_AT, HAS_PLAN 等）。
+4. **内容精炼**：去除寒暄（如"你好"、"谢谢"）和无关废话。生成的 memory content 必须是客观、清晰的陈述句。
+5. **重要性打分**：为每条记忆赋予一个重要性分数（importance，0.0-1.0）。
 
 输入记忆片段：
 {context_text}
@@ -210,8 +214,23 @@ class MemoryManager:
 请返回一个 JSON 对象，包含 "memories" 字段，格式如下：
 {{
     "memories": [
-        {{"content": "整理后的语义记忆内容1", "importance": 0.8}},
-        {{"content": "整理后的语义记忆内容2", "importance": 0.3}}
+        {{
+            "content": "整理后的语义记忆内容1...",
+            "importance": 0.8,
+            "entities": [
+                {{"name": "实体1", "type": "PERSON"}},
+                {{"name": "实体2", "type": "EVENT"}}
+            ],
+            "relations": [
+                {{"subject": "实体1", "object": "实体2", "relation": "PARTICIPATED_IN"}}
+            ]
+        }},
+        {{
+            "content": "整理后的语义记忆内容2...",
+            "importance": 0.5,
+            "entities": [],
+            "relations": []
+        }}
     ]
 }}
 """
@@ -233,8 +252,8 @@ class MemoryManager:
                     if isinstance(data, list):
                         facts = data
                     elif isinstance(data, dict):
-                        # 尝试寻找列表值的字段，例如 {"facts": [...]}
-                        for v in data.values():
+                        # 尝试寻找列表值的字段，例如 {"memories": [...]}
+                        for k, v in data.items():
                             if isinstance(v, list):
                                 facts = v
                                 break
@@ -248,10 +267,15 @@ class MemoryManager:
                                 f["importance"] = float(f.get("importance", 0.5))
                             except (ValueError, TypeError):
                                 f["importance"] = 0.5
+                            
+                            # 确保 entities/relations 存在
+                            if "entities" not in f: f["entities"] = []
+                            if "relations" not in f: f["relations"] = []
+
                             valid_facts.append(f)
                         elif isinstance(f, str):
                             # 兼容纯字符串格式
-                            valid_facts.append({"content": f, "importance": 0.5})
+                            valid_facts.append({"content": f, "importance": 0.5, "entities": [], "relations": []})
                     facts = valid_facts
                     
                 except json.JSONDecodeError:
@@ -277,9 +301,51 @@ class MemoryManager:
                                 "importance": importance
                             }
                         )
-                        # 自动提取实体和关系
-                        semantic.add(semantic_item)
-                        logger.debug(f"生成语义记忆: {content[:20]}... (重要性: {importance})")
+                        
+                        # --- 处理 LLM 生成的实体和关系 ---
+                        entities_list = []
+                        relations_list = []
+                        name_to_id_map = {}
+
+                        # 1. 构造 Entity 对象
+                        raw_entities = item.get("entities", [])
+                        for raw_ent in raw_entities:
+                            e_name = raw_ent.get("name")
+                            e_type = raw_ent.get("type", "MISC")
+                            if e_name:
+                                # 生成确定性 ID (需确保与 SemanticMemory 内部逻辑兼容，或直接传递对象)
+                                e_id = f"entity_{hash(e_name)}"
+                                entity_obj = Entity(
+                                    entity_id=e_id,
+                                    name=e_name,
+                                    entity_type=e_type,
+                                    description="Extracted via LLM consolidation"
+                                )
+                                entities_list.append(entity_obj)
+                                name_to_id_map[e_name] = e_id
+                        
+                        # 2. 构造 Relation 对象
+                        raw_relations = item.get("relations", [])
+                        for raw_rel in raw_relations:
+                            subj = raw_rel.get("subject")
+                            obj = raw_rel.get("object")
+                            r_type = raw_rel.get("relation", "RELATED_TO")
+                            
+                            # 只有当主体和客体都在实体列表中时才添加关系
+                            if subj in name_to_id_map and obj in name_to_id_map:
+                                relation_obj = Relation(
+                                    from_entity=name_to_id_map[subj],
+                                    to_entity=name_to_id_map[obj],
+                                    relation_type=r_type,
+                                    strength=importance,  # 关系强度跟随记忆重要性
+                                    evidence=content[:100]
+                                )
+                                relations_list.append(relation_obj)
+
+                        # 调用 SemanticMemory.add，传入预生成的实体和关系
+                        # 这样 SemanticMemory 内部就不会再运行 regex/spacy 提取，而是直接使用这些高质量数据
+                        semantic.add(semantic_item, entities=entities_list, relations=relations_list)
+                        logger.debug(f"生成语义记忆: {content[:20]}... (含 {len(entities_list)} 实体, {len(relations_list)} 关系)")
                 else:
                     logger.info(f"群组 {group_id} 的记忆未提取到有效事实")
 
@@ -289,6 +355,9 @@ class MemoryManager:
 
             except Exception as e:
                 logger.error(f"整理群组 {group_id} 的记忆失败: {e}")
+                # 打印详细堆栈以便调试
+                import traceback
+                logger.debug(traceback.format_exc())
         
         if total_processed > 0:
             logger.info(f"成功整理 {total_processed} 条情景记忆")
